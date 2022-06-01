@@ -1,25 +1,38 @@
 #!/bin/sh
 
-if [ -z "$1" ] || [ $1 = "--" ]; then
-  subcmd=""
+if [ -z "$1" ] || [ $(echo "$1" | cut -c 1) = "-" ]; then
+  subcmd="run"
 else
   subcmd="$1"
 fi
 
 while [ -n "$1" ] && [ "$1" != "--" ]; do
-  shift 1
+  case $1 in
+    "--release")
+      release="1"
+      shift
+      ;;
+    *)
+      shift
+      ;;
+  esac
 done
 
 root_dir=$(dirname $(realpath $0))
-echo $root_dir
 
 case $subcmd in
+  # Compile and run the program
   run)
     SS_LOG_DIR="$root_dir/env/logs" \
-    cargo run $@
+    cargo run \
+    $([ $release -eq "1" ] && echo "--release") \
+    $@
     ;;
+  # Build the program
   build)
-    cargo build $@
+    cargo build \
+    $([ $release -eq "1" ] && echo "--release") \
+    $@
     ;;
   *)
     echo "Sub-command" $subcmd "Not found"
