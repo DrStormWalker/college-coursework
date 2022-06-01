@@ -1,0 +1,24 @@
+[package]
+name = "college-coursework"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+wgpu = "0.12.0"
+specs = "0.17.0"
+tokio = "1.18.2"
+serde = { version = "1.0.137", features = ["derive"] }
+serde_json = "1.0.81"
+toml = "0.5.9"
+nalgebra = "0.31.0"
+rayon = "1.5.3"
+itertools = "0.10.3"
+log = "0.4.17"
+log4rs = "1.1.1"
+thiserror = "1.0.31"
+anyhow = "1.0.57"
+lazy_static = "1.4.0"
+clap = { version = "3.1.18", features = ["derive"] }
+#shellexpand = "2.1.0"
