@@ -1,3 +1,4 @@
+use log::debug;
 use rayon::prelude::*;
 use specs::{Entities, Join, ParJoin, Read, ReadStorage, System, WriteStorage};
 
@@ -29,7 +30,7 @@ impl<'a> System<'a> for Simulator {
                 let resultant = (&entities, &positions, &mass)
                     .join()
                     .filter(|(o, _pos, _mass)| e.id() != o.id())
-                    .map(|(_, other, mass)| {
+                    .map(|(o, other, mass)| {
                         let r = pos.0 - other.0;
 
                         let a = -1.0 * BIG_G * mass.0 / r.magnitude_squared();

@@ -1,4 +1,5 @@
-use specs::{Component, VecStorage};
+use log::info;
+use specs::{Component, Join, ReadStorage, System, VecStorage};
 
 use crate::util::Vec3;
 
@@ -37,6 +38,31 @@ impl Component for Mass {
 
 #[derive(Default, Copy, Clone)]
 pub struct DeltaTime(pub f64);
+
+pub struct Printer;
+impl Printer {
+    pub fn new() -> Self {
+        Self {}
+    }
+}
+impl<'a> System<'a> for Printer {
+    type SystemData = (
+        ReadStorage<'a, Position>,
+        ReadStorage<'a, Velocity>,
+        ReadStorage<'a, Mass>,
+    );
+
+    fn run(&mut self, (positions, velocities, mass): Self::SystemData) {
+        (&positions, &velocities, &mass)
+            .join()
+            .for_each(|(pos, vel, mass)| {
+                info!(
+                    "body {{ pos: {:?}, vel: {:?}, mass: {:?} }}",
+                    pos, vel, mass
+                )
+            });
+    }
+}
 
 /*
 #[derive(Debug, Clone, Copy)]

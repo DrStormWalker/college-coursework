@@ -1,7 +1,9 @@
-use super::{Position, Velocity};
+use specs::{Builder, Entity, World, WorldExt};
+
+use super::{Mass, Position, Velocity};
 use crate::util::Vec3;
 
-struct OrbitalBody {
+pub struct OrbitalBody {
     initial_pos: [f64; 3],
     initial_vel: [f64; 3],
     mass: f64,
@@ -15,8 +17,17 @@ impl OrbitalBody {
         Velocity::from(Vec3::from(self.initial_vel))
     }
 
-    pub fn get_mass(&self) -> f64 {
+    pub fn get_mass(&self) -> Mass {
         Mass::from(self.mass)
+    }
+
+    pub fn register_entity(&self, world: &mut World) -> Entity {
+        world
+            .create_entity()
+            .with(self.get_pos())
+            .with(self.get_vel())
+            .with(self.get_mass())
+            .build()
     }
 }
 
