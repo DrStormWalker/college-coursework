@@ -1,5 +1,13 @@
+mod args;
+mod program;
+mod simulation;
+mod util;
+
 #[macro_use]
 extern crate lazy_static;
+
+#[macro_use]
+extern crate clap;
 
 use anyhow::Result as AnyResult;
 use log::{debug, error, info, trace, warn, LevelFilter};
@@ -14,7 +22,12 @@ use log4rs::{
 };
 use std::{env, path::PathBuf};
 
-const APPLICATION_NAME: &'static str = "spaec_sim";
+use crate::args::Args;
+use clap::Parser;
+
+const APPLICATION_NAME: &'static str = crate_name!();
+const APPLICATION_AUTHOR: &'static str = crate_authors!();
+const APPLICATION_VERSION: &'static str = crate_version!();
 
 lazy_static! {
     pub static ref LOG_DIR: PathBuf = {
@@ -52,11 +65,13 @@ lazy_static! {
 }
 
 fn main() -> AnyResult<()> {
+    let args = Args::parse();
+
     // Only log when level is lower than or equal to Info when in release mode
     let stdout_level = if cfg!(debug_assertions) {
-        LevelFilter::Trace
+        LevelFilter::Trace.min(args.max_log_level)
     } else {
-        LevelFilter::Info
+        LevelFilter::Info.min(args.max_log_level)
     };
 
     // Define the maximum log level for the log file,
@@ -102,25 +117,29 @@ fn main() -> AnyResult<()> {
     let log_config = {
         // Add the appenders that tell the logger how to log messages
         // into the config.
-        let builder = LogConfig::builder()
-            .appender(
-                Appender::builder()
-                    .filter(Box::new(ThresholdFilter::new(stdout_level)))
-                    .build("stdout", Box::new(stdout)),
-            )
-            .appender(
+        let builder = LogConfig::builder().appender(
+            Appender::builder()
+                .filter(Box::new(ThresholdFilter::new(stdout_level)))
+                .build("stdout", Box::new(stdout)),
+        );
+
+        // Disable log files if specified in the Command-line arguments
+        let builder = if args.no_log_files {
+            builder
+        } else {
+            let builder = builder.appender(
                 Appender::builder()
                     .filter(Box::new(ThresholdFilter::new(file_level)))
                     .build("logfile", Box::new(log_file)),
             );
-
-        // Disable the Debug log file if running in release
-        #[cfg(debug_assertions)]
-        let builder = builder.appender(
-            Appender::builder()
-                .filter(Box::new(ThresholdFilter::new(LevelFilter::Trace)))
-                .build("debugfile", Box::new(debug_log_file)),
-        );
+            // Disable the Debug log file if running in release
+            #[cfg(debug_assertions)]
+            builder.appender(
+                Appender::builder()
+                    .filter(Box::new(ThresholdFilter::new(LevelFilter::Trace)))
+                    .build("debugfile", Box::new(debug_log_file)),
+            )
+        };
 
         // Tell the logger which appenders to use when logging. The 'debugfile'
         // logs that are logged to a file called debug.log is not included
@@ -143,8 +162,15 @@ fn main() -> AnyResult<()> {
     // Logs use the 'trace', 'debug', 'info', 'warn' and 'error' macros.
     // Corresponding to their repective log levels
     info!("Logging initialised");
-    info!("Loaded Configuration file");
 
+    // Declare if running in debug mode
+    #[cfg(debug_assertions)]
+    info!("Running in debug mode");
+
+    #[cfg(feature = "foo")]
+    info!("Foo feature enabled");
+    #[cfg(feature = "bar")]
+    info!("Bar feature enabled");
     // The program ran successfully
-    Ok(())
+    program::run()
 }

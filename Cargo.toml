@@ -1,6 +1,7 @@
 [package]
 name = "college-coursework"
 version = "0.1.0"
+authors = ["Joseph Hunt"]
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -20,5 +21,11 @@ log4rs = "1.1.1"
 thiserror = "1.0.31"
 anyhow = "1.0.57"
 lazy_static = "1.4.0"
-clap = { version = "3.1.18", features = ["derive"] }
+clap = { version = "3.1.18", features = ["derive", "cargo"] }
 #shellexpand = "2.1.0"
+
+[features]
+default = []
+
+foo = []
+bar = []
