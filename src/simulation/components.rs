@@ -36,6 +36,28 @@ impl Component for Mass {
     type Storage = VecStorage<Self>;
 }
 
+#[derive(Debug, Clone)]
+pub struct Identifier {
+    id: String,
+    name: String,
+}
+impl Identifier {
+    pub fn new(id: String, name: String) -> Self {
+        Self { id, name }
+    }
+
+    pub fn get_id(&self) -> &str {
+        self.id.as_str()
+    }
+
+    pub fn get_name(&self) -> &str {
+        self.name.as_str()
+    }
+}
+impl Component for Identifier {
+    type Storage = VecStorage<Self>;
+}
+
 #[derive(Default, Copy, Clone)]
 pub struct DeltaTime(pub f64);
 
@@ -47,18 +69,19 @@ impl Printer {
 }
 impl<'a> System<'a> for Printer {
     type SystemData = (
+        ReadStorage<'a, Identifier>,
         ReadStorage<'a, Position>,
         ReadStorage<'a, Velocity>,
         ReadStorage<'a, Mass>,
     );
 
-    fn run(&mut self, (positions, velocities, mass): Self::SystemData) {
-        (&positions, &velocities, &mass)
+    fn run(&mut self, (id, positions, velocities, mass): Self::SystemData) {
+        (&id, &positions, &velocities, &mass)
             .join()
-            .for_each(|(pos, vel, mass)| {
+            .for_each(|(id, pos, vel, mass)| {
                 info!(
-                    "body {{ pos: {:?}, vel: {:?}, mass: {:?} }}",
-                    pos, vel, mass
+                    "body {{\n\tid: {}, name: {},\n\tpos: {:?},\n\tvel: {:?},\n\tmass: {:?}\n}}",
+                    id.id, id.name, pos.0, vel.0, mass.0
                 )
             });
     }

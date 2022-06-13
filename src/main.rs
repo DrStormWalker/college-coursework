@@ -40,7 +40,7 @@ lazy_static! {
         // On linux check for the $XDG_STATE_HOME environment variable first,
         // if not found then coose the default location for $XDG_STATE_HOME
         // at /home/<user>/.local/state
-        #[cfg(target_os = "linux")]
+        #[cfg(target_family = "unix")]
         let log_dir = log_dir
             .or(env::var("XDG_STATE_HOME")
                 .map(|v| PathBuf::from(v.as_str()))
@@ -54,10 +54,13 @@ lazy_static! {
                         .join("logs")
                 }));
 
+        #[cfg(target_family = "windows")]
+        let log_dir = log_dir;
+
         // If not on Linux throw an error as Windows and Mac have not been
         // accounted for yet
-        #[cfg(not(target_os = "linux"))]
-        compile_error!("Operating systems other than Linux are not currently supported");
+        #[cfg(not(target_family = "unix"))]
+        compile_error!("Operating systems other than Unix are not currently supported");
 
         // Extract log directory and report error if necessary
         log_dir.unwrap()
@@ -161,16 +164,13 @@ fn main() -> AnyResult<()> {
 
     // Logs use the 'trace', 'debug', 'info', 'warn' and 'error' macros.
     // Corresponding to their repective log levels
+    info!("-------- Program started -------");
     info!("Logging initialised");
 
     // Declare if running in debug mode
     #[cfg(debug_assertions)]
     info!("Running in debug mode");
 
-    #[cfg(feature = "foo")]
-    info!("Foo feature enabled");
-    #[cfg(feature = "bar")]
-    info!("Bar feature enabled");
     // The program ran successfully
     program::run()
 }
