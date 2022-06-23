@@ -1,4 +1,4 @@
-use log::info;
+use log::{debug, info};
 use specs::{Component, Join, ReadStorage, System, VecStorage};
 
 use crate::util::Vec3;
@@ -80,9 +80,14 @@ impl<'a> System<'a> for Printer {
             .join()
             .for_each(|(id, pos, vel, mass)| {
                 info!(
-                    "body {{\n\tid: {}, name: {},\n\tpos: {:?},\n\tvel: {:?},\n\tmass: {:?}\n}}",
-                    id.id, id.name, pos.0, vel.0, mass.0
-                )
+                    "body{{id:{},name:{},pos:{:?},vel:{:?},mass:{:?}}}",
+                    id.id, id.name, pos.0, vel.0, mass.0,
+                );
+
+                debug!(
+                    "{} {{\n\tpos: {:?},\n\tvel: {:?},\n\tmass: {:?}\n}}",
+                    id.name, pos.0, vel.0, mass.0,
+                );
             });
     }
 }
