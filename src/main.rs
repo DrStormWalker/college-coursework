@@ -1,6 +1,7 @@
 mod args;
 mod program;
 mod simulation;
+mod test;
 mod util;
 
 #[macro_use]

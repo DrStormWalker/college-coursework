@@ -2,11 +2,9 @@ use log::debug;
 use rayon::prelude::*;
 use specs::{Entities, Join, ParJoin, Read, ReadStorage, System, WriteStorage};
 
-use crate::util::Vec3;
+use crate::util::{Vec3, BIG_G};
 
 use super::{components::DeltaTime, Mass, Position, Velocity};
-
-const BIG_G: f64 = 6.6743015e-11;
 
 pub struct Simulator;
 impl Simulator {
