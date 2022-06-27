@@ -61,7 +61,7 @@ pub fn keplerian_to_cartesian(
 
     // Perform Newton-Raphson iterations, exiting after a maximum number of iterations
     // or if the error margin becomes small enough
-    while big_f.abs() > ERROR_MARGIN && j < NEWTON_RAPHSON_ITERATIONS {
+    while j < NEWTON_RAPHSON_ITERATIONS {
         big_e -= big_f / (1.0 - e * big_e.cos());
         big_f = big_e - e * big_e.sin() - mt;
 
@@ -86,7 +86,7 @@ pub fn keplerian_to_cartesian(
     // Obtain the velocity vector `o_dot` in the same orbital frame
     // - The x and z axis are the same as above
     let o_dot =
-        (nu * a).sqrt() / rc * Vec3::new(-big_e.sin(), (1.0 - e * e).sqrt() * big_e.cos(), 0.0);
+        (mu * a).sqrt() / rc * Vec3::new(-big_e.sin(), (1.0 - e * e).sqrt() * big_e.cos(), 0.0);
 
     // Transform `o` and `o_dot` to the inertial frame in bodycentric regular
     // coordinates `r` and `r_dot`
@@ -94,7 +94,7 @@ pub fn keplerian_to_cartesian(
         o.x * (w.cos() * omega.cos() - w.sin() * i.cos() * omega.sin())
             - o.y * (w.sin() * omega.cos() + w.cos() * i.cos() * omega.sin()),
         o.x * (w.cos() * omega.sin() + w.sin() * i.cos() * omega.cos())
-            - o.y * (w.cos() * i.cos() * omega.cos() - w.sin() * omega.sin()),
+            + o.y * (w.cos() * i.cos() * omega.cos() - w.sin() * omega.sin()),
         o.x * (w.sin() * i.sin()) + o.y * (w.cos() * i.sin()),
     );
 
@@ -102,7 +102,7 @@ pub fn keplerian_to_cartesian(
         o_dot.x * (w.cos() * omega.cos() - w.sin() * i.cos() * omega.sin())
             - o_dot.y * (w.sin() * omega.cos() + w.cos() * i.cos() * omega.sin()),
         o_dot.x * (w.cos() * omega.sin() + w.sin() * i.cos() * omega.cos())
-            - o_dot.y * (w.cos() * i.cos() * omega.cos() - w.sin() * omega.sin()),
+            + o_dot.y * (w.cos() * i.cos() * omega.cos() - w.sin() * omega.sin()),
         o_dot.x * (w.sin() * i.sin()) + o_dot.y * (w.cos() * i.sin()),
     );
 

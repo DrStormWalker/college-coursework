@@ -18,5 +18,5 @@ fn test_keplerian_conversion() {
         BIG_G * 1.9885e30,
     );
 
-    assert!(false, "{}", earth_vel.magnitude());
+    assert!(earth_vel.magnitude() - 29.9e3 < 0.01);
 }
