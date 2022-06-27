@@ -20,11 +20,6 @@ use crate::util::Vec3;
 /// * `mu` - Standard gravitational parameter, mu = G * M where G is the Universal Gravitational
 ///          Constant and M is the central body mass
 ///
-/// # Examples
-///
-/// ```
-/// let (earth_pos, earth_vel) = kepler
-/// ```
 pub fn keplerian_to_cartesian(
     a: f64,
     e: f64,
