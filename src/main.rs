@@ -53,8 +53,10 @@ lazy_static! {
                         .join("state")
                         .join(APPLICATION_NAME)
                         .join("logs")
-                }));
+                }))
+            .expect("Failed to load log directory, no $HOME set");
 
+        // On Windows check for the %appdata% environment variable
         #[cfg(target_family = "windows")]
         let log_dir = log_dir
             .or(env::var("appdata")
@@ -62,8 +64,7 @@ lazy_static! {
                 .map(|v| v.join(APPLICATION_NAME).join("logs")))
             .expect("Failed to load log directory, no %AppData% set");
 
-        // Extract log directory and report error if necessary
-        log_dir.unwrap()
+        log_dir
     };
 }
 
