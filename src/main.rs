@@ -138,11 +138,13 @@ fn main() -> AnyResult<()> {
             );
             // Disable the Debug log file if running in release
             #[cfg(debug_assertions)]
-            builder.appender(
+            let builder = builder.appender(
                 Appender::builder()
                     .filter(Box::new(ThresholdFilter::new(LevelFilter::Trace)))
                     .build("debugfile", Box::new(debug_log_file)),
-            )
+            );
+
+            builder
         };
 
         // Tell the logger which appenders to use when logging. The 'debugfile'
