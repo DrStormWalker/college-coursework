@@ -56,12 +56,11 @@ lazy_static! {
                 }));
 
         #[cfg(target_family = "windows")]
-        let log_dir = log_dir;
-
-        // If not on Linux throw an error as Windows and Mac have not been
-        // accounted for yet
-        #[cfg(not(target_family = "unix"))]
-        compile_error!("Operating systems other than Unix are not currently supported");
+        let log_dir = log_dir
+            .or(env::var("appdata")
+                .map(|v| PathBuf::from(v.as_str()))
+                .map(|v| v.join(APPLICATION_NAME).join("logs")))
+            .expect("Failed to load log directory, no %AppData% set");
 
         // Extract log directory and report error if necessary
         log_dir.unwrap()
