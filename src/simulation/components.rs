@@ -3,6 +3,7 @@ use specs::{Component, Join, ReadStorage, System, VecStorage};
 
 use crate::util::Vec3;
 
+// The position of an entity
 #[derive(Debug, Clone, Copy)]
 pub struct Position(pub Vec3);
 impl From<Vec3> for Position {
@@ -14,6 +15,7 @@ impl Component for Position {
     type Storage = VecStorage<Self>;
 }
 
+// The velocity of an entity
 #[derive(Debug, Clone, Copy)]
 pub struct Velocity(pub Vec3);
 impl From<Vec3> for Velocity {
@@ -25,6 +27,7 @@ impl Component for Velocity {
     type Storage = VecStorage<Self>;
 }
 
+// The mass of an entity
 #[derive(Debug, Clone, Copy)]
 pub struct Mass(pub f64);
 impl From<f64> for Mass {
@@ -36,6 +39,7 @@ impl Component for Mass {
     type Storage = VecStorage<Self>;
 }
 
+// The Identifier and name of an entity
 #[derive(Debug, Clone)]
 pub struct Identifier {
     id: String,
@@ -58,6 +62,7 @@ impl Component for Identifier {
     type Storage = VecStorage<Self>;
 }
 
+// The delta time container struct
 #[derive(Default, Copy, Clone)]
 pub struct DeltaTime(pub f64);
 
@@ -76,14 +81,17 @@ impl<'a> System<'a> for Printer {
     );
 
     fn run(&mut self, (id, positions, velocities, mass): Self::SystemData) {
+        // Iterate over every entity
         (&id, &positions, &velocities, &mass)
             .join()
             .for_each(|(id, pos, vel, mass)| {
+                // Print the entity's id, name, pos, vel and mass as an informational log
                 info!(
                     "body{{id:{},name:{},pos:{:?},vel:{:?},mass:{:?}}}",
                     id.id, id.name, pos.0, vel.0, mass.0,
                 );
 
+                // Print the entity's name, pos, vel and mass as a debug log
                 debug!(
                     "{} {{\n\tpos: {:?},\n\tvel: {:?},\n\tmass: {:?}\n}}",
                     id.name, pos.0, vel.0, mass.0,
@@ -91,50 +99,3 @@ impl<'a> System<'a> for Printer {
             });
     }
 }
-
-/*
-#[derive(Debug, Clone, Copy)]
-pub struct SimIdentifier(usize);
-impl SimIdentifier {
-    pub fn new(i: usize) -> Self {
-        Self(i)
-    }
-
-    pub fn id(&self) -> usize {
-        self.0
-    }
-}
-impl Component for SimIdentifier {
-    type Storage = VecStorage<Self>;
-}
-
-#[derive(Debug, Default)]
-pub struct Positions {
-    pub current: Vec<Vec3>,
-    pub next: Vec<Vec3>,
-}
-impl Positions {
-    pub fn new(current: Vec<Vec3>, next: Vec<Vec3>) -> Self {
-        Self { current, next }
-    }
-}
-
-#[derive(Debug, Default)]
-pub struct Velocities {
-    pub current: Vec<Vec3>,
-    pub next: Vec<Vec3>,
-}
-impl Velocities {
-    pub fn new(current: Vec<Vec3>, next: Vec<Vec3>) -> Self {
-        Self { current, next }
-    }
-}
-
-#[derive(Debug, Default)]
-pub struct Masses(pub Vec<f64>);
-impl Masses {
-    pub fn new(masses: Vec<f64>) -> Self {
-        Self(masses)
-    }
-}
-*/

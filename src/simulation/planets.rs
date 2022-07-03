@@ -3,6 +3,7 @@ use specs::{Builder, Entity, World, WorldExt};
 use super::{Identifier, Mass, Position, Velocity};
 use crate::util::Vec3;
 
+// A structure to contain the information about an orbital body
 pub struct OrbitalBody {
     id: &'static str,
     name: &'static str,
@@ -28,6 +29,7 @@ impl OrbitalBody {
     }
 
     pub fn register_entity(&self, world: &mut World) -> Entity {
+        // Register the entity into the ECS world
         world
             .create_entity()
             .with(self.get_identifier())
@@ -38,6 +40,9 @@ impl OrbitalBody {
     }
 }
 
+// The hardcoded initial positions for each planet and the sun
+// In later iterations these values will be calculated using
+// data gathered about the orbits of these planets
 pub const SUN: OrbitalBody = OrbitalBody {
     id: "sun",
     name: "Sun",
