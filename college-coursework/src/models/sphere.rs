@@ -175,7 +175,6 @@ impl Icosphere {
             let delta_uv2 = uv2 - uv0;
 
             let r = 1.0 / (delta_uv1.x * delta_uv2.y - delta_uv1.y * delta_uv2.x);
-            println!("r: {:?}", r);
             let tangent = (delta_pos1 * delta_uv2.y - delta_pos2 * delta_uv1.y) * r;
             let bitangent = (delta_pos2 * delta_uv1.x - delta_pos1 * delta_uv2.x) * -r;
 
@@ -216,8 +215,6 @@ impl Icosphere {
 
         let mut normal = Rgb32FImage::new(10, 10);
         normal.pixels_mut().for_each(|p| *p = Rgb([1.0, 1.0, 1.0]));
-
-        println!("{:#?}", vertices);
 
         let normal = Texture::from_image(
             device,

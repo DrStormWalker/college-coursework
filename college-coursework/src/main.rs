@@ -69,7 +69,7 @@ fn main() -> Result<(), ApplicationError> {
 
             let (world, dispatchers) = setup::setup(
                 &window.state.device,
-                &window.state.queue,
+                window.state.queue.clone(),
                 &window.state.texture_bind_group_layout,
             )
             .await

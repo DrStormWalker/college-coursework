@@ -1,6 +1,8 @@
+use std::{rc::Rc, sync::Arc};
+
 use cgmath::{InnerSpace, Rotation3, Zero};
 use instant::Duration;
-use specs::{ReadStorage, World, Write};
+use specs::{Join, ReadStorage, World, Write};
 use wgpu::{include_wgsl, util::DeviceExt};
 use winit::{
     event::{ElementState, KeyboardInput, MouseButton, WindowEvent},
@@ -20,7 +22,6 @@ use super::{
     instance,
     light::DrawLight,
     model::{self, DrawModel, Model},
-    systems::render_entites,
     texture,
 };
 
@@ -36,7 +37,7 @@ pub struct RenderPassContainer<'a>(wgpu::RenderPass<'a>);
 pub struct State {
     surface: wgpu::Surface,
     pub device: wgpu::Device,
-    pub queue: wgpu::Queue,
+    pub queue: Arc<wgpu::Queue>,
     config: wgpu::SurfaceConfiguration,
     pub size: winit::dpi::PhysicalSize<u32>,
 
@@ -200,7 +201,7 @@ impl State {
             },
         );
         let camera_projection =
-            camera::Projection::new(config.width, config.height, cgmath::Deg(45.0), 0.1, 400.0);
+            camera::Projection::new(config.width, config.height, cgmath::Deg(45.0), 0.1, 4000.0);
 
         let camera_controller = camera::OrbitCameraController::new(4.0, 0.4);
 
@@ -374,7 +375,7 @@ impl State {
         Self {
             surface,
             device,
-            queue,
+            queue: Arc::new(queue),
             config,
             size,
             render_pipeline,
@@ -521,71 +522,74 @@ impl State {
     pub fn render(&mut self, world: &mut World) -> Result<(), wgpu::SurfaceError> {
         let output = self.surface.get_current_texture()?;
 
-        let view = output
-            .texture
-            .create_view(&wgpu::TextureViewDescriptor::default());
+        world.exec(|(models,): (ReadStorage<RenderModel>,)| {
+            let view = output
+                .texture
+                .create_view(&wgpu::TextureViewDescriptor::default());
 
-        let mut encoder = self
-            .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("Render Encoder"),
-            });
+            let mut encoder = self
+                .device
+                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                    label: Some("Render Encoder"),
+                });
 
-        {
-            let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                label: Some("Render Pass"),
-                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                    view: &view,
-                    resolve_target: None,
-                    ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
-                        store: true,
-                    },
-                })],
-                depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
-                    view: &self.depth_texture.view,
-                    depth_ops: Some(wgpu::Operations {
-                        load: wgpu::LoadOp::Clear(1.0),
-                        store: true,
+            {
+                let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                    label: Some("Render Pass"),
+                    color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                        view: &view,
+                        resolve_target: None,
+                        ops: wgpu::Operations {
+                            load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
+                            store: true,
+                        },
+                    })],
+                    depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                        view: &self.depth_texture.view,
+                        depth_ops: Some(wgpu::Operations {
+                            load: wgpu::LoadOp::Clear(1.0),
+                            store: true,
+                        }),
+                        stencil_ops: None,
                     }),
-                    stencil_ops: None,
-                }),
-            });
+                });
 
-            //render_pass.set_vertex_buffer(1, self.instance_buffer.slice(..));
+                //render_pass.set_vertex_buffer(1, self.instance_buffer.slice(..));
 
-            /*#[cfg(feature = "light")]
-            render_pass.set_pipeline(&self.light_render_pipeline);
-            #[cfg(feature = "light")]
-            render_pass.draw_light_model(
-                &self.obj_model,
-                &self.camera_bind_group,
-                &self.light_bind_group,
-            );
-
-            render_pass.set_pipeline(&self.render_pipeline);
-            render_pass.draw_model_instanced(
-                &self.obj_model,
-                0..self.instances.len() as u32,
-                &self.camera_bind_group,
-                &self.light_bind_group,
-            );*/
-
-            //render_pass.draw_indexed(0..self.num_vertices, 0, 0..self.instances.len() as _);
-
-            world.exec(|(models,): (ReadStorage<RenderModel>,)| {
-                render_entites(
-                    models,
-                    &self.render_pipeline,
-                    &mut render_pass,
+                /*#[cfg(feature = "light")]
+                render_pass.set_pipeline(&self.light_render_pipeline);
+                #[cfg(feature = "light")]
+                render_pass.draw_light_model(
+                    &self.obj_model,
                     &self.camera_bind_group,
                     &self.light_bind_group,
                 );
-            });
-        }
 
-        self.queue.submit(std::iter::once(encoder.finish()));
-        output.present();
+                render_pass.set_pipeline(&self.render_pipeline);
+                render_pass.draw_model_instanced(
+                    &self.obj_model,
+                    0..self.instances.len() as u32,
+                    &self.camera_bind_group,
+                    &self.light_bind_group,
+                );*/
+
+                //render_pass.draw_indexed(0..self.num_vertices, 0, 0..self.instances.len() as _);
+
+                render_pass.set_pipeline(&self.render_pipeline);
+
+                (&models).join().for_each(|model| {
+                    render_pass.set_vertex_buffer(1, model.instance_buffer.slice(..));
+                    render_pass.draw_model(
+                        &model.model,
+                        &self.camera_bind_group,
+                        &self.light_bind_group,
+                    );
+                })
+            }
+
+            self.queue.submit(std::iter::once(encoder.finish()));
+            output.present();
+        });
 
         Ok(())
     }

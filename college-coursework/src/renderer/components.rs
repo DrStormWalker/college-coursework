@@ -1,3 +1,4 @@
+use cgmath::{Quaternion, Vector3};
 use specs::{Component, VecStorage};
 use wgpu::util::DeviceExt;
 
@@ -31,5 +32,21 @@ impl RenderModel {
             instance,
             instance_buffer,
         }
+    }
+
+    pub fn update_instance(
+        &mut self,
+        queue: &wgpu::Queue,
+        position: Vector3<f32>,
+        rotation: Quaternion<f32>,
+    ) {
+        self.instance.position = position;
+        self.instance.rotation = rotation;
+
+        queue.write_buffer(
+            &self.instance_buffer,
+            0,
+            bytemuck::cast_slice(&[self.instance.to_raw()]),
+        );
     }
 }

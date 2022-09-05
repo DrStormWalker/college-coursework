@@ -111,7 +111,7 @@ pub fn setup_log() -> Result<(), log::SetLoggerError> {
                     #[cfg(not(debug_assertions))]
                     out.finish(format_args!(
                         "time={time} target={target} level={level} msg={msg:?}",
-                        time = chrono::Local::now().to_rfc_3339(),
+                        time = chrono::Local::now().to_rfc3339(),
                         target = record.target(),
                         level = record.level(),
                         msg = format!("{}", message).as_str(),

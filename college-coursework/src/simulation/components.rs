@@ -1,14 +1,13 @@
+use cgmath::Vector3;
 use instant::Duration;
 use log::{debug, info};
 use specs::{Component, Join, ReadStorage, System, VecStorage};
 
-use crate::util::Vec3;
-
 // The position of an entity
 #[derive(Debug, Clone, Copy)]
-pub struct Position(pub Vec3);
-impl From<Vec3> for Position {
-    fn from(v: Vec3) -> Self {
+pub struct Position(pub Vector3<f32>);
+impl From<Vector3<f32>> for Position {
+    fn from(v: Vector3<f32>) -> Self {
         Self(v)
     }
 }
@@ -18,9 +17,9 @@ impl Component for Position {
 
 // The velocity of an entity
 #[derive(Debug, Clone, Copy)]
-pub struct Velocity(pub Vec3);
-impl From<Vec3> for Velocity {
-    fn from(v: Vec3) -> Self {
+pub struct Velocity(pub Vector3<f32>);
+impl From<Vector3<f32>> for Velocity {
+    fn from(v: Vector3<f32>) -> Self {
         Self(v)
     }
 }
@@ -30,9 +29,9 @@ impl Component for Velocity {
 
 // The mass of an entity
 #[derive(Debug, Clone, Copy)]
-pub struct Mass(pub f64);
-impl From<f64> for Mass {
-    fn from(m: f64) -> Self {
+pub struct Mass(pub f32);
+impl From<f32> for Mass {
+    fn from(m: f32) -> Self {
         Self(m)
     }
 }
@@ -66,6 +65,26 @@ impl Component for Identifier {
 // The delta time container struct
 #[derive(Default, Copy, Clone)]
 pub struct DeltaTime(pub Duration);
+
+#[derive(Default, Copy, Clone)]
+pub struct TimeScale {
+    pub time_scale: f32,
+    pub total_time_elapsed: f32,
+    pub iterations: usize,
+}
+impl TimeScale {
+    pub fn new(total_time_elapsed: f32, iterations: usize) -> Self {
+        if iterations < 1 {
+            panic!("Iterations cannot be less than 1");
+        }
+
+        Self {
+            time_scale: total_time_elapsed / iterations as f32,
+            total_time_elapsed,
+            iterations,
+        }
+    }
+}
 
 pub struct Printer;
 impl Printer {

@@ -1,3 +1,4 @@
+use cgmath::Vector3;
 use specs::{Builder, Component, Entity, VecStorage, World, WorldExt};
 
 use super::{Identifier, Mass, Position, Velocity};
@@ -39,18 +40,18 @@ impl InteractionHandler {
 pub struct OrbitalBody {
     id: &'static str,
     name: &'static str,
-    initial_pos: [f64; 3],
-    initial_vel: [f64; 3],
-    mass: f64,
+    initial_pos: [f32; 3],
+    initial_vel: [f32; 3],
+    mass: f32,
     body_type: BodyType,
 }
 impl OrbitalBody {
     pub fn get_pos(&self) -> Position {
-        Position::from(Vec3::from(self.initial_pos))
+        Position::from(Vector3::<f32>::from(self.initial_pos))
     }
 
     pub fn get_vel(&self) -> Velocity {
-        Velocity::from(Vec3::from(self.initial_vel))
+        Velocity::from(Vector3::<f32>::from(self.initial_vel))
     }
 
     pub fn get_mass(&self) -> Mass {
