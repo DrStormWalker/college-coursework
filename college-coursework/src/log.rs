@@ -1,5 +1,6 @@
 use std::{env, path::PathBuf};
 
+use const_format::concatcp;
 use error_stack::{IntoReport, Result, ResultExt};
 
 use crate::APPLICATION_NAME;
@@ -59,17 +60,20 @@ pub fn setup_log() -> Result<(), log::SetLoggerError> {
         .info(Color::Blue);
 
     fern::Dispatch::new()
+        .filter(|metadata| {
+            metadata.target().starts_with(concatcp!(APPLICATION_NAME, "::")) || metadata.level() <= log::Level::Warn
+        })
         .chain(
             fern::Dispatch::new()
                 .format(move |out, message, record| {
                     #[cfg(debug_assertions)]
                     out.finish(format_args!(
-                        "{colour_line}time={time} target={target} file={file} line={line} level={level} msg={msg:?}\x1B[0m",
+                        "{colour_line}time={time} target={target} file={file} line={line} level={level}{colour_line} msg={msg:?}\x1B[0m",
                         colour_line = format_args!(
                             "\x1B[{}m",
                             colour_line.get_color(&record.level()).to_fg_str(),
                         ),
-                        time = chrono::Local::now().format("%Y-%m-%dT%H:%M:%S%.9f"),
+                        time = chrono::Local::now().to_rfc3339(),
                         target = record.target(),
                         file = record.file().unwrap_or(""),
                         line = record.line().unwrap_or(0),
@@ -83,7 +87,7 @@ pub fn setup_log() -> Result<(), log::SetLoggerError> {
                             "\x1B[{}m",
                             colour_line.get_color(&record.level()).to_fg_str(),
                         ),
-                        time = chrono::Local::now().format("%Y-%m-%dT%H:%M:%S%.9f"),
+                        time = chrono::Local::now().to_rfc3339(),
                         target = record.target(),
                         level = colour.color(record.level()),
                         msg = format!("{}", message).as_str(),
@@ -97,7 +101,7 @@ pub fn setup_log() -> Result<(), log::SetLoggerError> {
                     #[cfg(debug_assertions)]
                     out.finish(format_args!(
                         "time={time} target={target} file={file} line={line} level={level} msg={msg:?}",
-                        time = chrono::Local::now().format("%Y-%m-%dT%H:%M:%S%.9f"),
+                        time = chrono::Local::now().to_rfc3339(),
                         target = record.target(),
                         file = record.file().unwrap_or(""),
                         line = record.line().unwrap_or(0),
@@ -107,7 +111,7 @@ pub fn setup_log() -> Result<(), log::SetLoggerError> {
                     #[cfg(not(debug_assertions))]
                     out.finish(format_args!(
                         "time={time} target={target} level={level} msg={msg:?}",
-                        time = chrono::Local::now().format("%Y-%m-%dT%H:%M:%S%.9f"),
+                        time = chrono::Local::now().to_rfc_3339(),
                         target = record.target(),
                         level = record.level(),
                         msg = format!("{}", message).as_str(),

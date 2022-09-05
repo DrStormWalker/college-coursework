@@ -51,7 +51,7 @@ impl<'a> System<'a> for Simulator {
 
                 // Apply the resultant acceleration to the velocity
                 if let Some(resultant) = resultant {
-                    vel.0 += resultant * dt.0;
+                    vel.0 += resultant * dt.0.as_secs_f64();
                 }
             });
 
@@ -59,7 +59,7 @@ impl<'a> System<'a> for Simulator {
         (&mut positions, &velocities)
             .par_join()
             .for_each(|(mut pos, vel)| {
-                pos.0 += vel.0 * dt.0;
+                pos.0 += vel.0 * dt.0.as_secs_f64();
             });
     }
 }

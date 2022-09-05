@@ -1,4 +1,4 @@
-use anyhow::Result as AnyResult;
+/*use anyhow::Result as AnyResult;
 use specs::{DispatcherBuilder, World, WorldExt};
 use tokio::time;
 
@@ -102,4 +102,4 @@ pub fn run() -> AnyResult<()> {
 
     // Exit telling the calling scope that it ran successfully
     Ok(())
-}
+}*/

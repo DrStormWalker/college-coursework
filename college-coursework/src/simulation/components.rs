@@ -1,3 +1,4 @@
+use instant::Duration;
 use log::{debug, info};
 use specs::{Component, Join, ReadStorage, System, VecStorage};
 
@@ -64,7 +65,7 @@ impl Component for Identifier {
 
 // The delta time container struct
 #[derive(Default, Copy, Clone)]
-pub struct DeltaTime(pub f64);
+pub struct DeltaTime(pub Duration);
 
 pub struct Printer;
 impl Printer {

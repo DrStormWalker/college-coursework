@@ -1,0 +1,17 @@
+WHITESPACE = _{ " " | "\t" | "\r" | "\u{1b}[" ~ ASCII_DIGIT+ ~ "m" }
+
+Key = { LETTER+ }
+
+char = _{
+    !"\"" ~ ANY
+  | "\\\""
+}
+inner = @{ char+ }
+EscapedValue = @{ "\"" ~ inner ~ "\"" }
+Value = { EscapedValue | (!" " ~ ANY)+ }
+
+Parameter = ${ Key ~ "=" ~ Value }
+
+Line = { Parameter+ ~ ("\n" | EOI) }
+
+File = { SOI ~ Line* ~ EOI }

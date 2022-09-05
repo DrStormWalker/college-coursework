@@ -1,7 +1,39 @@
-use specs::{Builder, Entity, World, WorldExt};
+use specs::{Builder, Component, Entity, VecStorage, World, WorldExt};
 
 use super::{Identifier, Mass, Position, Velocity};
 use crate::util::Vec3;
+
+use bitflags::bitflags;
+
+#[derive(Debug, Copy, Clone)]
+pub enum BodyType {
+    Star,
+    Planet,
+}
+
+bitflags! {
+    pub struct InteractionFlags: u32 {
+        const STAR = 1 << BodyType::Star as u32;
+        const PLANET = 1 << BodyType::Planet as u32;
+    }
+}
+impl From<BodyType> for InteractionFlags {
+    fn from(body_type: BodyType) -> Self {
+        InteractionFlags::from_bits(1 << body_type as u32).unwrap()
+    }
+}
+
+#[derive(Component)]
+#[storage(VecStorage)]
+pub struct InteractionHandler {
+    flags: InteractionFlags,
+    body_type: BodyType,
+}
+impl InteractionHandler {
+    pub fn new(flags: InteractionFlags, body_type: BodyType) -> Self {
+        Self { flags, body_type }
+    }
+}
 
 // A structure to contain the information about an orbital body
 pub struct OrbitalBody {
@@ -10,6 +42,7 @@ pub struct OrbitalBody {
     initial_pos: [f64; 3],
     initial_vel: [f64; 3],
     mass: f64,
+    body_type: BodyType,
 }
 impl OrbitalBody {
     pub fn get_pos(&self) -> Position {
@@ -49,6 +82,7 @@ pub const SUN: OrbitalBody = OrbitalBody {
     initial_pos: [0.0, 0.0, 0.0],
     initial_vel: [0.0, 0.0, 0.0],
     mass: 1.989e30,
+    body_type: BodyType::Star,
 };
 
 pub const PLANET_MERCURY: OrbitalBody = OrbitalBody {
@@ -57,6 +91,7 @@ pub const PLANET_MERCURY: OrbitalBody = OrbitalBody {
     initial_pos: [57.909e9, 0.0, 0.0],
     initial_vel: [0.0, 47.36e3, 0.0],
     mass: 0.33011e24,
+    body_type: BodyType::Planet,
 };
 
 pub const PLANET_VENUS: OrbitalBody = OrbitalBody {
@@ -65,6 +100,7 @@ pub const PLANET_VENUS: OrbitalBody = OrbitalBody {
     initial_pos: [108.209e9, 0.0, 0.0],
     initial_vel: [0.0, 35.02e3, 0.0],
     mass: 4.8675e24,
+    body_type: BodyType::Planet,
 };
 
 pub const PLANET_EARTH: OrbitalBody = OrbitalBody {
@@ -73,6 +109,7 @@ pub const PLANET_EARTH: OrbitalBody = OrbitalBody {
     initial_pos: [149.596e9, 0.0, 0.0],
     initial_vel: [0.0, 29.78e3, 0.0],
     mass: 5.9724e24,
+    body_type: BodyType::Planet,
 };
 
 pub const PLANET_MARS: OrbitalBody = OrbitalBody {
@@ -81,6 +118,7 @@ pub const PLANET_MARS: OrbitalBody = OrbitalBody {
     initial_pos: [227.923e9, 0.0, 0.0],
     initial_vel: [0.0, 24.07e3, 0.0],
     mass: 0.64171e24,
+    body_type: BodyType::Planet,
 };
 
 pub const PLANET_JUPITER: OrbitalBody = OrbitalBody {
@@ -89,6 +127,7 @@ pub const PLANET_JUPITER: OrbitalBody = OrbitalBody {
     initial_pos: [778.570e9, 0.0, 0.0],
     initial_vel: [0.0, 13e3, 0.0],
     mass: 1898.19e24,
+    body_type: BodyType::Planet,
 };
 
 pub const PLANET_SATURN: OrbitalBody = OrbitalBody {
@@ -97,6 +136,7 @@ pub const PLANET_SATURN: OrbitalBody = OrbitalBody {
     initial_pos: [1433.529e9, 0.0, 0.0],
     initial_vel: [0.0, 9.68e3, 0.0],
     mass: 568.34e24,
+    body_type: BodyType::Planet,
 };
 
 pub const PLANET_URANUS: OrbitalBody = OrbitalBody {
@@ -105,6 +145,7 @@ pub const PLANET_URANUS: OrbitalBody = OrbitalBody {
     initial_pos: [2872.463e9, 0.0, 0.0],
     initial_vel: [0.0, 6.80e3, 0.0],
     mass: 86.813e24,
+    body_type: BodyType::Planet,
 };
 
 pub const PLANET_NEPTUNE: OrbitalBody = OrbitalBody {
@@ -113,4 +154,18 @@ pub const PLANET_NEPTUNE: OrbitalBody = OrbitalBody {
     initial_pos: [4495.060e9, 0.0, 0.0],
     initial_vel: [0.0, 5.43e3, 0.0],
     mass: 102.413e24,
+    body_type: BodyType::Planet,
 };
+
+pub fn planets() -> Vec<OrbitalBody> {
+    vec![
+        PLANET_MERCURY,
+        PLANET_VENUS,
+        PLANET_EARTH,
+        PLANET_MARS,
+        PLANET_JUPITER,
+        PLANET_SATURN,
+        PLANET_URANUS,
+        PLANET_NEPTUNE,
+    ]
+}
