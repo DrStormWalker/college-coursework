@@ -88,7 +88,7 @@ pub async fn setup<'a, 'b>(
     }
 
     world.insert(queue);
-    world.insert(TimeScale::new(315576000.0, 20));
+    world.insert(TimeScale::new(3155760.0, 20));
 
     let simulation_dispatcher = DispatcherBuilder::new()
         .with(Simulator::new(), "sys_simulator", &[])

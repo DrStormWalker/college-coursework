@@ -38,17 +38,9 @@ impl Window {
             Event::DeviceEvent {
                 event: DeviceEvent::MouseMotion { delta },
                 ..
-            } => {
-                if state.mouse_right_pressed {
-                    state
-                        .camera_controller
-                        .process_right_mouse(delta.0, delta.1);
-                }
-
-                if state.mouse_left_pressed {
-                    state.camera_controller.process_left_mouse(delta.0, delta.1);
-                }
-            }
+            } => state
+                .camera_controller
+                .process_mouse_move_event(delta.0, delta.1),
             Event::WindowEvent {
                 ref event,
                 window_id,
@@ -65,6 +57,27 @@ impl Window {
                                 },
                             ..
                         } => *control_flow = ControlFlow::Exit,
+                        WindowEvent::KeyboardInput {
+                            input:
+                                KeyboardInput {
+                                    state: keyboard_state,
+                                    virtual_keycode: Some(virtual_keycode),
+                                    ..
+                                },
+                            ..
+                        } => state
+                            .camera_controller
+                            .process_keyboard_event(*virtual_keycode, *keyboard_state),
+                        WindowEvent::MouseInput {
+                            state: keyboard_state,
+                            button,
+                            ..
+                        } => state
+                            .camera_controller
+                            .process_mouse_button_event(*button, *keyboard_state),
+                        WindowEvent::MouseWheel { delta, .. } => {
+                            state.camera_controller.process_mouse_scroll_event(*delta)
+                        }
                         WindowEvent::Resized(physical_size) => {
                             state.resize(*physical_size);
                         }

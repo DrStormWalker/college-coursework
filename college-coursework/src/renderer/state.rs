@@ -1,6 +1,6 @@
 use std::{rc::Rc, sync::Arc};
 
-use cgmath::{InnerSpace, Rotation3, Zero};
+use cgmath::{Euler, InnerSpace, Rotation3, Zero};
 use instant::Duration;
 use specs::{Join, ReadStorage, World, Write};
 use wgpu::{include_wgsl, util::DeviceExt};
@@ -55,10 +55,7 @@ pub struct State {
     camera_buffer: wgpu::Buffer,
     camera_bind_group: wgpu::BindGroup,
     light_bind_group: wgpu::BindGroup,
-    pub camera_controller: camera::OrbitCameraController,
-
-    pub mouse_left_pressed: bool,
-    pub mouse_right_pressed: bool,
+    pub camera_controller: Box<dyn camera::CameraController>,
 
     depth_texture: texture::Texture,
     pub texture_bind_group_layout: wgpu::BindGroupLayout,
@@ -194,16 +191,16 @@ impl State {
 
         let camera = camera::Camera::new(
             (0.0, 5.0, 10.0),
-            cgmath::Euler {
-                x: cgmath::Deg(0.0),
-                y: cgmath::Deg(0.0),
+            Euler {
+                x: cgmath::Deg(-20.0),
+                y: cgmath::Deg(-90.0),
                 z: cgmath::Deg(0.0),
             },
         );
         let camera_projection =
             camera::Projection::new(config.width, config.height, cgmath::Deg(45.0), 0.1, 4000.0);
 
-        let camera_controller = camera::OrbitCameraController::new(4.0, 0.4);
+        let camera_controller = Box::new(camera::FreeCameraController::new(20.0, 40.0, 1.0, 1.0));
 
         let mut camera_uniform = camera::CameraUniform::new();
 
@@ -391,8 +388,6 @@ impl State {
             camera_buffer,
             camera_bind_group,
             light_bind_group,
-            mouse_left_pressed: false,
-            mouse_right_pressed: false,
             camera_controller,
             depth_texture,
             texture_bind_group_layout,
@@ -467,38 +462,7 @@ impl State {
     }
 
     pub fn input(&mut self, event: &WindowEvent) -> bool {
-        match event {
-            WindowEvent::KeyboardInput {
-                input:
-                    KeyboardInput {
-                        virtual_keycode: Some(key),
-                        state,
-                        ..
-                    },
-                ..
-            } => self.camera_controller.process_keyboard(*key, *state),
-            WindowEvent::MouseWheel { delta, .. } => {
-                self.camera_controller.process_scroll(delta);
-                true
-            }
-            WindowEvent::MouseInput {
-                button: MouseButton::Left,
-                state,
-                ..
-            } => {
-                self.mouse_left_pressed = *state == ElementState::Pressed;
-                true
-            }
-            WindowEvent::MouseInput {
-                button: MouseButton::Right,
-                state,
-                ..
-            } => {
-                self.mouse_right_pressed = *state == ElementState::Pressed;
-                true
-            }
-            _ => false,
-        }
+        false
     }
 
     pub fn update(&mut self, dt: Duration, world: &mut World, dispatchers: &mut Dispatchers) {

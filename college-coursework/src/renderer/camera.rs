@@ -1,13 +1,15 @@
 use std::f32::consts::FRAC_PI_2;
 
 use cgmath::{
-    Angle, EuclideanSpace, Euler, InnerSpace, Matrix3, Matrix4, Point3, Quaternion, Rad, Rotation,
-    Transform, Vector3,
+    perspective, Angle, EuclideanSpace, Euler, InnerSpace, Matrix3, Matrix4, Point3, Quaternion,
+    Rad, Rotation, Transform, Vector3,
 };
 use instant::Duration;
 use winit::{
     dpi::PhysicalPosition,
-    event::{ElementState, KeyboardInput, MouseScrollDelta, VirtualKeyCode, WindowEvent},
+    event::{
+        ElementState, KeyboardInput, MouseButton, MouseScrollDelta, VirtualKeyCode, WindowEvent,
+    },
 };
 
 use crate::renderer::camera;
@@ -200,7 +202,206 @@ impl Projection {
     }
 }
 
+/*#[derive(Debug)]
+pub struct Camera {
+    pub position: Point3<f32>,
+    pub rotation: Quaternion<f32>,
+}
+
+impl Camera {
+    pub fn new<P: Into<Point3<f32>>, R: Into<Quaternion<f32>>>(position: P, rotation: R) -> Self {
+        Self {
+            position: position.into(),
+            rotation: rotation.into(),
+        }
+    }
+
+    pub fn calc_matrix(&self) -> Matrix4<f32> {
+        let (sin_pitch, cos_pitch) = self.pitch.0.sin_cos();
+        let (sin_yaw, cos_yaw) = self.yaw.0.sin_cos();
+
+        Matrix4::look_to_rh(
+            self.position,
+            Vector3::new(cos_pitch * cos_yaw, sin_pitch, cos_pitch * sin_yaw).normalize(),
+            Vector3::unit_y(),
+        )
+    }
+}*/
+
+/*pub struct Projection {
+    aspect: f32,
+    fovy: Rad<f32>,
+    znear: f32,
+    zfar: f32,
+}
+
+impl Projection {
+    pub fn new<F: Into<Rad<f32>>>(width: u32, height: u32, fovy: F, znear: f32, zfar: f32) -> Self {
+        Self {
+            aspect: width as f32 / height as f32,
+            fovy: fovy.into(),
+            znear,
+            zfar,
+        }
+    }
+
+    pub fn resize(&mut self, width: u32, height: u32) {
+        self.aspect = width as f32 / height as f32;
+    }
+
+    pub fn calc_matrix(&self) -> Matrix4<f32> {
+        OPENGL_TO_WGPU_MATRIX * perspective(self.fovy, self.aspect, self.znear, self.zfar)
+    }
+}*/
+
+pub trait CameraController {
+    fn process_keyboard_event(&mut self, key: VirtualKeyCode, state: ElementState);
+    fn process_mouse_button_event(&mut self, button: MouseButton, state: ElementState);
+    fn process_mouse_scroll_event(&mut self, delta: MouseScrollDelta);
+    fn process_mouse_move_event(&mut self, dx: f64, dy: f64);
+    fn update_camera(&mut self, camera: &mut Camera, dt: Duration);
+}
+
 #[derive(Debug)]
+pub struct FreeCameraController {
+    amount_left: f32,
+    amount_right: f32,
+    amount_forward: f32,
+    amount_backward: f32,
+    amount_up: f32,
+    amount_down: f32,
+    amount_roll_left: f32,
+    amount_roll_right: f32,
+    mouse_left_pressed: bool,
+    rotate_horizontal: f32,
+    rotate_vertical: f32,
+    scroll: f32,
+    speed: f32,
+    scroll_sensitivity: f32,
+    pan_sensitivity: f32,
+    roll_sensitivity: f32,
+}
+
+impl FreeCameraController {
+    pub fn new(
+        speed: f32,
+        scroll_sensitivity: f32,
+        pan_sensitivity: f32,
+        roll_sensitivity: f32,
+    ) -> Self {
+        Self {
+            amount_left: 0.0,
+            amount_right: 0.0,
+            amount_forward: 0.0,
+            amount_backward: 0.0,
+            amount_up: 0.0,
+            amount_down: 0.0,
+            amount_roll_left: 0.0,
+            amount_roll_right: 0.0,
+            mouse_left_pressed: false,
+            rotate_horizontal: 0.0,
+            rotate_vertical: 0.0,
+            scroll: 0.0,
+            speed,
+            scroll_sensitivity,
+            pan_sensitivity,
+            roll_sensitivity,
+        }
+    }
+}
+
+impl CameraController for FreeCameraController {
+    fn process_keyboard_event(&mut self, key: VirtualKeyCode, state: ElementState) {
+        let amount = if state == ElementState::Pressed {
+            1.0
+        } else {
+            0.0
+        };
+        match key {
+            VirtualKeyCode::W | VirtualKeyCode::Up => {
+                self.amount_forward = amount;
+            }
+            VirtualKeyCode::S | VirtualKeyCode::Down => {
+                self.amount_backward = amount;
+            }
+            VirtualKeyCode::A | VirtualKeyCode::Left => {
+                self.amount_left = amount;
+            }
+            VirtualKeyCode::D | VirtualKeyCode::Right => {
+                self.amount_right = amount;
+            }
+            VirtualKeyCode::Q => {
+                self.amount_roll_left = amount;
+            }
+            VirtualKeyCode::E => {
+                self.amount_roll_right = amount;
+            }
+            VirtualKeyCode::Space => {
+                self.amount_up = amount;
+            }
+            VirtualKeyCode::LShift => {
+                self.amount_down = amount;
+            }
+            _ => {}
+        }
+    }
+
+    fn process_mouse_button_event(&mut self, button: MouseButton, state: ElementState) {
+        match button {
+            MouseButton::Left => {
+                self.mouse_left_pressed = state == ElementState::Pressed;
+            }
+            _ => {}
+        }
+    }
+
+    fn process_mouse_scroll_event(&mut self, delta: MouseScrollDelta) {
+        self.scroll = match delta {
+            MouseScrollDelta::LineDelta(_, scroll) => scroll * 0.5,
+            MouseScrollDelta::PixelDelta(PhysicalPosition { y: scroll, .. }) => scroll as f32,
+        };
+    }
+
+    fn process_mouse_move_event(&mut self, dx: f64, dy: f64) {
+        if self.mouse_left_pressed {
+            self.rotate_horizontal = dx as f32;
+            self.rotate_vertical = dy as f32;
+        }
+    }
+
+    fn update_camera(&mut self, camera: &mut Camera, dt: Duration) {
+        let dt = dt.as_secs_f32();
+
+        // Move forward/backward, left/right and up/down
+        let right = camera.rotation.rotate_vector(Vector3::unit_x());
+        let up = camera.rotation.rotate_vector(Vector3::unit_y());
+        let forward = camera.rotation.rotate_vector(Vector3::unit_z());
+        camera.position += forward * (self.amount_forward - self.amount_backward) * self.speed * dt;
+        camera.position += -right * (self.amount_right - self.amount_left) * self.speed * dt;
+        camera.position += up * (self.amount_up - self.amount_down) * self.speed * dt;
+
+        self.speed += self.scroll.powi(2) * self.scroll_sensitivity * dt;
+        self.speed = self.speed.clamp(0.0, f32::MAX);
+        self.scroll = 0.0;
+
+        // Rotate
+        let rotation = Quaternion::from(Euler {
+            x: Rad(self.rotate_vertical) * self.pan_sensitivity * dt,
+            y: Rad(-self.rotate_horizontal) * self.pan_sensitivity * dt,
+            z: Rad(self.amount_roll_left - self.amount_roll_right) * self.roll_sensitivity * dt,
+        });
+
+        camera.rotation = camera.rotation * rotation;
+
+        // If process_mouse isn't called every frame, these values
+        // will not get set to zero, and the camera will rotate
+        // when moving in a non cardinal direction.
+        self.rotate_horizontal = 0.0;
+        self.rotate_vertical = 0.0;
+    }
+}
+
+/*#[derive(Debug)]
 pub struct OrbitCameraController {
     amount_left: f32,
     amount_right: f32,
@@ -358,4 +559,4 @@ impl OrbitCameraController {
             camera.pitch = -Rad(SAFE_FRAC_PI_2);
         }*/
     }
-}
+}*/
