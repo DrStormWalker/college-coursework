@@ -380,8 +380,11 @@ impl CameraController for FreeCameraController {
         camera.position += -right * (self.amount_right - self.amount_left) * self.speed * dt;
         camera.position += up * (self.amount_up - self.amount_down) * self.speed * dt;
 
-        self.speed += self.scroll.powi(2) * self.scroll_sensitivity * dt;
-        self.speed = self.speed.clamp(0.0, f32::MAX);
+        self.speed += self.speed * self.scroll * self.scroll_sensitivity * dt;
+        if self.speed < 0.0 {
+            self.speed = 0.0;
+        }
+
         self.scroll = 0.0;
 
         // Rotate

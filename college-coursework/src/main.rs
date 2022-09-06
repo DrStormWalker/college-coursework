@@ -2,6 +2,7 @@ mod args;
 mod assets;
 mod log;
 mod models;
+mod panel;
 mod renderer;
 mod setup;
 mod simulation;
@@ -14,7 +15,7 @@ extern crate lazy_static;
 #[macro_use]
 extern crate clap;
 
-use std::{error::Error, fmt};
+use std::{error::Error, fmt, thread};
 
 use ::log::info;
 use anyhow::Result as AnyResult;
@@ -63,7 +64,7 @@ fn main() -> Result<(), ApplicationError> {
         .attach_printable("Failed to build Async Runtime")
         .change_context(ApplicationError::RuntimeBuildError)?;
 
-    runtime
+    let (window, world, dispatchers) = runtime
         .block_on(async {
             let window = crate::renderer::window::Window::new().await;
 
@@ -75,14 +76,17 @@ fn main() -> Result<(), ApplicationError> {
             .await
             .attach_printable("Failed to set up application")?;
 
-            window.run(world, dispatchers).await;
-
-            Result::Ok(())
+            Ok((window, world, dispatchers))
         })
-        .change_context(ApplicationError::SetupError);
+        .change_context(ApplicationError::SetupError)?;
 
-    Ok(())
+    let (panel, _) = panel::Ui::new(700, 700, "College Coursework");
 
-    // The program ran successfully
-    // program::run()
+    /*thread::spawn(move || {
+    });
+
+    panel.run();*/
+
+    window.run(world, dispatchers);
+    //Ok(())
 }

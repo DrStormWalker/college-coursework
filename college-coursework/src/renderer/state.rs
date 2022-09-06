@@ -200,7 +200,7 @@ impl State {
         let camera_projection =
             camera::Projection::new(config.width, config.height, cgmath::Deg(45.0), 0.1, 4000.0);
 
-        let camera_controller = Box::new(camera::FreeCameraController::new(20.0, 40.0, 1.0, 1.0));
+        let camera_controller = Box::new(camera::FreeCameraController::new(20.0, 200.0, 1.0, 1.0));
 
         let mut camera_uniform = camera::CameraUniform::new();
 

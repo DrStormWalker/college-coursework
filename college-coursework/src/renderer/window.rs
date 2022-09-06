@@ -1,4 +1,11 @@
+use std::{
+    fs::File,
+    io::{BufReader, Cursor},
+    thread,
+};
+
 use log::error;
+use rodio::{decoder::DecoderError, Decoder, OutputStream, Sink};
 use specs::World;
 use winit::{event_loop::EventLoop, window::WindowBuilder};
 
@@ -23,12 +30,48 @@ impl Window {
         }
     }
 
-    pub async fn run(self, mut world: World, mut dispatchers: Dispatchers<'static, 'static>) -> ! {
+    pub fn run(self, mut world: World, mut dispatchers: Dispatchers<'static, 'static>) -> ! {
         let Self {
             event_loop,
             window,
             mut state,
         } = self;
+
+        let (_stream, stream_handle) = OutputStream::try_default().unwrap();
+
+        const CITY_OF_GHOSTS_MUSIC: &[u8] =
+            include_bytes!("../../assets/music/background/City of Ghosts.mp3");
+        const DUST_TO_DUST_MUSIC: &[u8] =
+            include_bytes!("../../assets/music/background/Dust to Dust.mp3");
+        const NORTHWARD_MUSIC: &[u8] =
+            include_bytes!("../../assets/music/background/Northward.mp3");
+        const SLEEPING_LIGHTLY_MUSIC: &[u8] =
+            include_bytes!("../../assets/music/background/Sleeping Lightly.mp3");
+        const STRATUS_MUSIC: &[u8] = include_bytes!("../../assets/music/background/Stratus.mp3");
+
+        thread::spawn(move || {
+            let files = [
+                CITY_OF_GHOSTS_MUSIC,
+                DUST_TO_DUST_MUSIC,
+                NORTHWARD_MUSIC,
+                SLEEPING_LIGHTLY_MUSIC,
+                STRATUS_MUSIC,
+            ];
+
+            let sink = Sink::try_new(&stream_handle).unwrap();
+
+            let mut song_num = 0;
+
+            loop {
+                let file = BufReader::new(Cursor::new(files[song_num % files.len()]));
+                let source = Decoder::new(file).unwrap();
+
+                sink.append(source);
+
+                sink.sleep_until_end();
+                song_num += 1;
+            }
+        });
 
         let mut last_render_time = instant::Instant::now();
 

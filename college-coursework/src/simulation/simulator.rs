@@ -9,7 +9,7 @@ use crate::{renderer::components::RenderModel, util::BIG_G};
 
 use super::{
     components::{DeltaTime, TimeScale},
-    Mass, Position, Velocity,
+    InteractionFlags, InteractionHandler, Mass, Position, Velocity,
 };
 
 pub struct Simulator;
@@ -23,6 +23,7 @@ impl<'a> System<'a> for Simulator {
         WriteStorage<'a, Position>,
         WriteStorage<'a, Velocity>,
         ReadStorage<'a, Mass>,
+        ReadStorage<'a, InteractionHandler>,
         Read<'a, DeltaTime>,
         Read<'a, TimeScale>,
         Entities<'a>,
@@ -30,19 +31,29 @@ impl<'a> System<'a> for Simulator {
 
     fn run(
         &mut self,
-        (mut positions, mut velocities, mass, dt, time_scale, entities): Self::SystemData,
+        (mut positions, mut velocities, mass, interaction_handlers, dt, time_scale, entities): Self::SystemData,
     ) {
         for _ in 0..time_scale.iterations {
             // Iterate over every entity in parallel
-            (&entities, &positions, &mut velocities)
+            (
+                &entities,
+                &positions,
+                &mut velocities,
+                &interaction_handlers,
+            )
                 .par_join()
-                .for_each(|(e, pos, mut vel)| {
+                .for_each(|(e, pos, mut vel, interaction_handler)| {
                     // Get a resultant acceleration using iterators
-                    let resultant = (&entities, &positions, &mass)
+                    let resultant = (&entities, &positions, &mass, &interaction_handlers)
                         .join()
                         // Make sure the body does not try to interact with itself
-                        .filter(|(o, _pos, _mass)| e.id() != o.id())
-                        .map(|(o, other, mass)| {
+                        .filter(|(o, _pos, _mass, _interaction_handler)| e.id() != o.id())
+                        .filter(|(_, _pos, _mass, other_interaction_handler)| {
+                            let other_flags: InteractionFlags =
+                                other_interaction_handler.body_type.into();
+                            interaction_handler.flags & other_flags == other_flags
+                        })
+                        .map(|(_, other, mass, _interaction_handler)| {
                             // Displacement from one body to the other
                             let r = pos.0 - other.0;
 
