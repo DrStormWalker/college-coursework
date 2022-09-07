@@ -16,6 +16,9 @@ jobs:
           toolchain: stable
           default: true
           override: true
+          
+      - name: Install alsa
+        run: sudo apt-get install -y alsa
 
       - name: Build
         run: cargo build --all --release && strip target/release/college-coursework && mv target/release/college-coursework target/release/college-coursework_amd64
