@@ -36,12 +36,22 @@ impl<'a> System<'a> for Simulator {
         ReadStorage<'a, InteractionHandler>,
         Read<'a, DeltaTime>,
         Read<'a, TimeScale>,
+        Read<'a, GravitationalConstant>,
         Entities<'a>,
     );
 
     fn run(
         &mut self,
-        (mut positions, mut velocities, mass, interaction_handlers, dt, time_scale, entities): Self::SystemData,
+        (
+            mut positions,
+            mut velocities,
+            mass,
+            interaction_handlers,
+            dt,
+            time_scale,
+            gravitational_constant,
+            entities,
+        ): Self::SystemData,
     ) {
         for _ in 0..time_scale.iterations {
             // Iterate over every entity in parallel
@@ -73,7 +83,7 @@ impl<'a> System<'a> for Simulator {
                             // F = G * m1 * m2 / |r|^2
                             // m1 * a = G * m1 * m2 / |r|^2
                             // a = G * m2 / |r|^2
-                            let a = BIG_G * mass.0 / r.magnitude2();
+                            let a = gravitational_constant.0 * mass.0 / r.magnitude2();
 
                             // Get the direction of the other body from this
                             // And project the acceleration into that direction
@@ -107,16 +117,17 @@ impl<'a> System<'a> for InstanceUpdater {
     type SystemData = (
         ReadStorage<'a, Position>,
         WriteStorage<'a, RenderModel>,
+        Read<'a, PositionScaleFactor>,
         ReadExpect<'a, Arc<wgpu::Queue>>,
     );
 
-    fn run(&mut self, (positions, mut models, queue): Self::SystemData) {
+    fn run(&mut self, (positions, mut models, scale_factor, queue): Self::SystemData) {
         (&positions, &mut models)
             .join()
             .for_each(|(position, model)| {
                 model.update_instance(
                     &queue,
-                    position.0.map(|a| a as f32) / 4_000_000_000.0,
+                    position.0.map(|a| a as f32) / scale_factor.0 as f32,
                     Quaternion::zero(),
                 );
             });
