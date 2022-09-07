@@ -5,6 +5,7 @@ use cgmath::{
     Rad, Rotation, Transform, Vector3,
 };
 use instant::Duration;
+use specs::{Component, VecStorage};
 use winit::{
     dpi::PhysicalPosition,
     event::{
@@ -62,6 +63,19 @@ impl CameraUniform {
         self.view_proj = (projection.calc_matrix() * camera.calc_matrix()).into();
     }
 }
+
+#[derive(Debug, Component)]
+#[storage(VecStorage)]
+pub struct CameraPosition(pub Point3<f32>);
+impl Default for CameraPosition {
+    fn default() -> Self {
+        Self(Point3::new(0.0, 0.0, 0.0))
+    }
+}
+
+#[derive(Debug, Component, Default)]
+#[storage(VecStorage)]
+pub struct CameraSpeed(pub f32);
 
 /*pub struct CameraController {
     speed: f32,
@@ -260,6 +274,8 @@ pub trait CameraController {
     fn process_mouse_scroll_event(&mut self, delta: MouseScrollDelta);
     fn process_mouse_move_event(&mut self, dx: f64, dy: f64);
     fn update_camera(&mut self, camera: &mut Camera, dt: Duration);
+
+    fn get_speed(&self) -> f32;
 }
 
 #[derive(Debug)]
@@ -381,8 +397,8 @@ impl CameraController for FreeCameraController {
         camera.position += up * (self.amount_up - self.amount_down) * self.speed * dt;
 
         self.speed += self.speed * self.scroll * self.scroll_sensitivity * dt;
-        if self.speed < 0.0 {
-            self.speed = 0.0;
+        if self.speed < 0.1 {
+            self.speed = 0.1;
         }
 
         self.scroll = 0.0;
@@ -401,6 +417,10 @@ impl CameraController for FreeCameraController {
         // when moving in a non cardinal direction.
         self.rotate_horizontal = 0.0;
         self.rotate_vertical = 0.0;
+    }
+
+    fn get_speed(&self) -> f32 {
+        self.speed
     }
 }
 

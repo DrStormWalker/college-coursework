@@ -17,7 +17,7 @@ use crate::{
 };
 
 use super::{
-    camera,
+    camera::{self, CameraPosition, CameraSpeed},
     components::RenderModel,
     instance,
     light::DrawLight,
@@ -479,6 +479,16 @@ impl State {
         world.exec(|(mut delta,): (Write<DeltaTime>,)| {
             delta.0 = dt;
         });
+
+        world.exec(
+            |(mut camera_position, mut camera_speed): (
+                Write<CameraPosition>,
+                Write<CameraSpeed>,
+            )| {
+                camera_position.0 = self.camera.position;
+                camera_speed.0 = self.camera_controller.get_speed();
+            },
+        );
 
         dispatchers.simulation_dispatcher.dispatch(world);
     }

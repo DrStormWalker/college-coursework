@@ -19,12 +19,15 @@ use std::{error::Error, fmt, thread};
 
 use ::log::info;
 use anyhow::Result as AnyResult;
+use crossbeam::channel;
 use error_stack::{IntoReport, Result, ResultExt};
+use fltk::app;
 use setup::SetupError;
+use specs::{Join, ReadStorage};
 use thiserror::Error;
 use tokio::io;
 
-use crate::args::Args;
+use crate::{args::Args, panel::PanelChannels, simulation::Identifier};
 use clap::Parser;
 
 const APPLICATION_NAME: &'static str = crate_name!();
@@ -56,6 +59,9 @@ fn main() -> Result<(), ApplicationError> {
     #[cfg(debug_assertions)]
     info!("Running in debug mode");
 
+    let (sender_ui, receiver_ui) = channel::unbounded();
+    let (sender_app, receiver_app) = app::channel();
+
     // Setup a new async runtime throwing an error if it did not
     let runtime = tokio::runtime::Builder::new_current_thread()
         .enable_all()
@@ -72,6 +78,8 @@ fn main() -> Result<(), ApplicationError> {
                 &window.state.device,
                 window.state.queue.clone(),
                 &window.state.texture_bind_group_layout,
+                sender_app,
+                receiver_ui,
             )
             .await
             .attach_printable("Failed to set up application")?;
@@ -80,12 +88,26 @@ fn main() -> Result<(), ApplicationError> {
         })
         .change_context(ApplicationError::SetupError)?;
 
-    let (panel, _) = panel::Ui::new(700, 700, "College Coursework");
+    let ids = {
+        let (ids,): (ReadStorage<Identifier>,) = world.system_data();
 
-    /*thread::spawn(move || {
+        (&ids).join().map(|id| id.clone()).collect::<Vec<_>>()
+    };
+
+    thread::spawn(move || {
+        let panel = panel::Ui::new(
+            700,
+            700,
+            "College Coursework",
+            PanelChannels {
+                sender_ui,
+                receiver_app,
+            },
+            ids,
+        );
+
+        panel.run();
     });
-
-    panel.run();*/
 
     window.run(world, dispatchers);
     //Ok(())

@@ -1,5 +1,7 @@
 #![cfg(test)]
 
+use cgmath::InnerSpace;
+
 #[test]
 fn test_keplerian_conversion_earth() {
     use crate::simulation::util::keplerian_to_cartesian;

@@ -1,17 +1,24 @@
 use std::sync::Arc;
 
 use cgmath::{Quaternion, Vector3, Zero};
+use crossbeam::channel::Receiver;
 use error_stack::Result;
-use specs::{Builder, Dispatcher, DispatcherBuilder, World, WorldExt};
+use fltk::app;
+use specs::{
+    Builder, Dispatcher, DispatcherBuilder, Join, Read, ReadExpect, ReadStorage, World, WorldExt,
+};
 use thiserror::Error;
 
 use crate::{
     models::sphere::Icosphere,
+    panel::{BodyState, GlobalState, UiMessage},
     renderer::{components::RenderModel, instance::Instance},
     simulation::{
-        self, BodyType, Identifier, InstanceUpdater, InteractionFlags, InteractionHandler, Mass,
-        Position, Simulator, TimeScale, Velocity, SUN,
+        self, ApplicationUpdater, BodyType, GravitationalConstant, Identifier, InstanceUpdater,
+        InteractionFlags, InteractionHandler, Mass, Position, PositionScaleFactor, Simulator,
+        TimeScale, UiUpdater, Velocity, SUN,
     },
+    util::BIG_G,
 };
 
 #[derive(Debug, Error)]
@@ -25,6 +32,8 @@ pub async fn setup<'a, 'b>(
     device: &wgpu::Device,
     queue: Arc<wgpu::Queue>,
     texture_bind_group_layout: &wgpu::BindGroupLayout,
+    sender: app::Sender<UiMessage>,
+    receiver: Receiver<UiMessage>,
 ) -> Result<(World, Dispatchers<'a, 'b>), SetupError> {
     let mut world = World::new();
 
@@ -76,7 +85,10 @@ pub async fn setup<'a, 'b>(
                     planet.get_colour(),
                     texture_bind_group_layout,
                 ),
-                Instance::new(planet.get_pos().0 / 4_000_000_000.0, Quaternion::zero()),
+                Instance::new(
+                    planet.get_pos().0.map(|a| a as f32) / 4_000_000_000.0,
+                    Quaternion::zero(),
+                ),
                 wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
                 Some(planet.get_identifier().get_id()),
             ))
@@ -89,12 +101,49 @@ pub async fn setup<'a, 'b>(
 
     world.insert(queue);
     world.insert(TimeScale::new(3155760.0, 20));
+    world.insert(GravitationalConstant(BIG_G));
+    world.insert(PositionScaleFactor(4_000_000_000.0));
+
+    world.exec(
+        |(identifiers, masses, time_scale, constant, scale_factor): (
+            ReadStorage<Identifier>,
+            ReadStorage<Mass>,
+            ReadExpect<TimeScale>,
+            Read<GravitationalConstant>,
+            Read<PositionScaleFactor>,
+        )| {
+            sender.send(UiMessage::GlobalState(GlobalState::ChangeScale(
+                time_scale.total_time_elapsed,
+            )));
+
+            sender.send(UiMessage::GlobalState(
+                GlobalState::ChangeGravitationalConstant(constant.0),
+            ));
+
+            sender.send(UiMessage::GlobalState(GlobalState::ChangeScale(
+                scale_factor.0,
+            )));
+
+            (&identifiers, &masses).join().for_each(|(id, mass)| {
+                sender.send(UiMessage::BodyState {
+                    id: id.get_id().to_string(),
+                    state: BodyState::ChangeMass(mass.0),
+                });
+            });
+        },
+    );
 
     let simulation_dispatcher = DispatcherBuilder::new()
         .with(Simulator::new(), "sys_simulator", &[])
         .with(
             InstanceUpdater::new(),
             "sys_instance_updater",
+            &["sys_simulator"],
+        )
+        .with(UiUpdater::new(sender), "sys_ui_updater", &["sys_simulator"])
+        .with(
+            ApplicationUpdater::new(receiver),
+            "sys_app_updater",
             &["sys_simulator"],
         )
         .build();

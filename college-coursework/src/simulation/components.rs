@@ -1,13 +1,19 @@
 use cgmath::Vector3;
+use fltk::app;
 use instant::Duration;
 use log::{debug, info};
-use specs::{Component, Join, ReadStorage, System, VecStorage};
+use specs::{Component, Join, Read, ReadStorage, System, VecStorage};
+
+use crate::{
+    panel::{BodyState, GlobalState, UiMessage, VectorStateChange},
+    renderer::camera::{CameraPosition, CameraSpeed},
+};
 
 // The position of an entity
 #[derive(Debug, Clone, Copy)]
-pub struct Position(pub Vector3<f32>);
-impl From<Vector3<f32>> for Position {
-    fn from(v: Vector3<f32>) -> Self {
+pub struct Position(pub Vector3<f64>);
+impl From<Vector3<f64>> for Position {
+    fn from(v: Vector3<f64>) -> Self {
         Self(v)
     }
 }
@@ -17,9 +23,9 @@ impl Component for Position {
 
 // The velocity of an entity
 #[derive(Debug, Clone, Copy)]
-pub struct Velocity(pub Vector3<f32>);
-impl From<Vector3<f32>> for Velocity {
-    fn from(v: Vector3<f32>) -> Self {
+pub struct Velocity(pub Vector3<f64>);
+impl From<Vector3<f64>> for Velocity {
+    fn from(v: Vector3<f64>) -> Self {
         Self(v)
     }
 }
@@ -29,9 +35,9 @@ impl Component for Velocity {
 
 // The mass of an entity
 #[derive(Debug, Clone, Copy)]
-pub struct Mass(pub f32);
-impl From<f32> for Mass {
-    fn from(m: f32) -> Self {
+pub struct Mass(pub f64);
+impl From<f64> for Mass {
+    fn from(m: f64) -> Self {
         Self(m)
     }
 }
@@ -68,23 +74,29 @@ pub struct DeltaTime(pub Duration);
 
 #[derive(Default, Copy, Clone)]
 pub struct TimeScale {
-    pub time_scale: f32,
-    pub total_time_elapsed: f32,
+    pub time_scale: f64,
+    pub total_time_elapsed: f64,
     pub iterations: usize,
 }
 impl TimeScale {
-    pub fn new(total_time_elapsed: f32, iterations: usize) -> Self {
+    pub fn new(total_time_elapsed: f64, iterations: usize) -> Self {
         if iterations < 1 {
             panic!("Iterations cannot be less than 1");
         }
 
         Self {
-            time_scale: total_time_elapsed / iterations as f32,
+            time_scale: total_time_elapsed / iterations as f64,
             total_time_elapsed,
             iterations,
         }
     }
 }
+
+#[derive(Default, Copy, Clone)]
+pub struct GravitationalConstant(pub f64);
+
+#[derive(Default, Copy, Clone)]
+pub struct PositionScaleFactor(pub f64);
 
 pub struct Printer;
 impl Printer {
@@ -117,5 +129,82 @@ impl<'a> System<'a> for Printer {
                     id.name, pos.0, vel.0, mass.0,
                 );
             });
+    }
+}
+
+pub struct UiUpdater {
+    sender: app::Sender<UiMessage>,
+}
+impl UiUpdater {
+    pub fn new(sender: app::Sender<UiMessage>) -> Self {
+        Self { sender }
+    }
+}
+impl<'a> System<'a> for UiUpdater {
+    type SystemData = (
+        ReadStorage<'a, Identifier>,
+        ReadStorage<'a, Position>,
+        ReadStorage<'a, Velocity>,
+        Read<'a, CameraSpeed>,
+        Read<'a, CameraPosition>,
+    );
+
+    fn run(
+        &mut self,
+        (identifiers, positions, velocities, camera_speed, camera_position): Self::SystemData,
+    ) {
+        (&identifiers, &positions, &velocities)
+            .join()
+            .for_each(|(id, position, velocity)| {
+                self.sender.send(UiMessage::BodyState {
+                    id: id.get_id().to_string(),
+                    state: BodyState::ChangePosition(VectorStateChange::X(position.0.x)),
+                });
+
+                self.sender.send(UiMessage::BodyState {
+                    id: id.get_id().to_string(),
+                    state: BodyState::ChangePosition(VectorStateChange::Y(position.0.y)),
+                });
+
+                self.sender.send(UiMessage::BodyState {
+                    id: id.get_id().to_string(),
+                    state: BodyState::ChangePosition(VectorStateChange::Z(position.0.z)),
+                });
+
+                self.sender.send(UiMessage::BodyState {
+                    id: id.get_id().to_string(),
+                    state: BodyState::ChangeVelocity(VectorStateChange::X(velocity.0.x)),
+                });
+
+                self.sender.send(UiMessage::BodyState {
+                    id: id.get_id().to_string(),
+                    state: BodyState::ChangeVelocity(VectorStateChange::Y(velocity.0.y)),
+                });
+
+                self.sender.send(UiMessage::BodyState {
+                    id: id.get_id().to_string(),
+                    state: BodyState::ChangeVelocity(VectorStateChange::Z(velocity.0.z)),
+                });
+            });
+
+        self.sender
+            .send(UiMessage::GlobalState(GlobalState::ChangeCameraPosition(
+                VectorStateChange::X(camera_position.0.x as f64),
+            )));
+
+        self.sender
+            .send(UiMessage::GlobalState(GlobalState::ChangeCameraPosition(
+                VectorStateChange::Y(camera_position.0.y as f64),
+            )));
+
+        self.sender
+            .send(UiMessage::GlobalState(GlobalState::ChangeCameraPosition(
+                VectorStateChange::Z(camera_position.0.z as f64),
+            )));
+
+        self.sender
+            .send(UiMessage::GlobalState(GlobalState::ChangeCameraSpeed(
+                camera_speed.0 as f64,
+            )));
     }
 }

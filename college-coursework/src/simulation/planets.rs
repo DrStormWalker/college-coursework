@@ -40,19 +40,19 @@ impl InteractionHandler {
 pub struct OrbitalBody {
     id: &'static str,
     name: &'static str,
-    initial_pos: [f32; 3],
-    initial_vel: [f32; 3],
+    initial_pos: [f64; 3],
+    initial_vel: [f64; 3],
     colour: [f32; 4],
-    mass: f32,
+    mass: f64,
     body_type: BodyType,
 }
 impl OrbitalBody {
     pub fn get_pos(&self) -> Position {
-        Position::from(Vector3::<f32>::from(self.initial_pos))
+        Position::from(Vector3::<f64>::from(self.initial_pos))
     }
 
     pub fn get_vel(&self) -> Velocity {
-        Velocity::from(Vector3::<f32>::from(self.initial_vel))
+        Velocity::from(Vector3::<f64>::from(self.initial_vel))
     }
 
     pub fn get_mass(&self) -> Mass {

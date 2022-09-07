@@ -1,4 +1,4 @@
-use crate::util::Vec3;
+use cgmath::Vector3;
 
 /// Returns Cartesian State Vectors converted from the given Keplerian
 /// Orbital Elements
@@ -30,7 +30,7 @@ pub fn keplerian_to_cartesian(
     t: f64,
     m0: f64,
     mu: f64,
-) -> (Vec3, Vec3) {
+) -> (Vector3<f64>, Vector3<f64>) {
     let mt = if t == t0 {
         m0
     } else {
@@ -76,16 +76,16 @@ pub fn keplerian_to_cartesian(
     // Obtain the position vector `o` in the oribtal frame
     // - The z-axis is perpendicular to the orbital frame
     // - The x-axis is pointing to the periapsis of the orbit
-    let o = rc * Vec3::new(nu.cos(), nu.sin(), 0.0);
+    let o = rc * Vector3::new(nu.cos(), nu.sin(), 0.0);
 
     // Obtain the velocity vector `o_dot` in the same orbital frame
     // - The x and z axis are the same as above
     let o_dot =
-        (mu * a).sqrt() / rc * Vec3::new(-big_e.sin(), (1.0 - e * e).sqrt() * big_e.cos(), 0.0);
+        (mu * a).sqrt() / rc * Vector3::new(-big_e.sin(), (1.0 - e * e).sqrt() * big_e.cos(), 0.0);
 
     // Transform `o` and `o_dot` to the inertial frame in bodycentric regular
     // coordinates `r` and `r_dot`
-    let r = Vec3::new(
+    let r = Vector3::new(
         o.x * (w.cos() * omega.cos() - w.sin() * i.cos() * omega.sin())
             - o.y * (w.sin() * omega.cos() + w.cos() * i.cos() * omega.sin()),
         o.x * (w.cos() * omega.sin() + w.sin() * i.cos() * omega.cos())
@@ -93,7 +93,7 @@ pub fn keplerian_to_cartesian(
         o.x * (w.sin() * i.sin()) + o.y * (w.cos() * i.sin()),
     );
 
-    let r_dot = Vec3::new(
+    let r_dot = Vector3::new(
         o_dot.x * (w.cos() * omega.cos() - w.sin() * i.cos() * omega.sin())
             - o_dot.y * (w.sin() * omega.cos() + w.cos() * i.cos() * omega.sin()),
         o_dot.x * (w.cos() * omega.sin() + w.sin() * i.cos() * omega.cos())

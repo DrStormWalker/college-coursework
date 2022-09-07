@@ -3,6 +3,9 @@ mod planets;
 mod simulator;
 pub mod util;
 
-pub use components::{DeltaTime, Identifier, Mass, Position, Printer, TimeScale, Velocity};
+pub use components::{
+    DeltaTime, GravitationalConstant, Identifier, Mass, Position, PositionScaleFactor, Printer,
+    TimeScale, Velocity,
+};
 pub use planets::*;
-pub use simulator::{InstanceUpdater, Simulator};
+pub use simulator::{ApplicationUpdater, InstanceUpdater, Simulator, UiUpdater};
