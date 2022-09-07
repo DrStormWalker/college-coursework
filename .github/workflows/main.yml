@@ -20,8 +20,8 @@ jobs:
       - name: Update local pcakages
         run: sudo apt-get update
           
-      - name: Install alsa
-        run: sudo apt-get install -y libasound2-dev
+      - name: Install alsa and X11 packages
+        run: sudo apt-get install -y libasound2-dev libx11-dev libxinerama-dev libxcursor-dev libxfixes-dev lipango libpangoxft libpangocairo
 
       - name: Build
         run: cargo build --all --release && strip target/release/college-coursework && mv target/release/college-coursework target/release/college-coursework_amd64
