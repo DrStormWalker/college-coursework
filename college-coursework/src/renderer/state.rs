@@ -2,7 +2,7 @@ use std::{rc::Rc, sync::Arc};
 
 use cgmath::{Euler, InnerSpace, Rotation3, Zero};
 use instant::Duration;
-use specs::{Join, ReadStorage, World, Write};
+use specs::{Join, Read, ReadStorage, World, Write};
 use wgpu::{include_wgsl, util::DeviceExt};
 use winit::{
     event::{ElementState, KeyboardInput, MouseButton, WindowEvent},
@@ -32,8 +32,10 @@ const INSTANCE_DISPLACEMENT: cgmath::Vector3<f32> = cgmath::Vector3::new(
     NUM_INSTANCES_PER_ROW as f32 * 0.5,
 );
 
+/// A container for the render pass for use in the entity component syste,
 pub struct RenderPassContainer<'a>(wgpu::RenderPass<'a>);
 
+/// The state of the application render
 pub struct State {
     surface: wgpu::Surface,
     pub device: wgpu::Device,
@@ -62,6 +64,8 @@ pub struct State {
 }
 impl State {
     pub async fn new(window: &Window) -> Self {
+        //! Create a new application state and render pipeline
+
         let size = window.inner_size();
 
         let instance = wgpu::Instance::new(wgpu::Backends::PRIMARY);
@@ -141,21 +145,6 @@ impl State {
                 ],
                 label: Some("texture_bind_group_layout"),
             });
-
-        /*let diffuse_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            layout: &texture_bind_group_layout,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: wgpu::BindingResource::TextureView(&diffuse_texture.view),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: wgpu::BindingResource::Sampler(&diffuse_texture.sampler),
-                },
-            ],
-            label: Some("diffuse_bind_group"),
-        });*/
 
         let light_uniform = LightUniform::new([0.0, 4.0, 0.0], [1.0, 1.0, 1.0]);
 
@@ -279,96 +268,6 @@ impl State {
             shader,
         );
 
-        /*let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Vertex Buffer"),
-            contents: bytemuck::cast_slice(VERTICES),
-            usage: wgpu::BufferUsages::VERTEX,
-        });
-
-        let index_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Index Buffer"),
-            contents: bytemuck::cast_slice(INDICES),
-            usage: wgpu::BufferUsages::INDEX,
-        });
-
-        let num_vertices = INDICES.len() as u32;
-
-        let instances = (0..NUM_INSTANCES_PER_ROW)
-            .flat_map(|z| {
-                (0..NUM_INSTANCES_PER_ROW).map(move |x| {
-                    let position = cgmath::Vector3 {
-                        x: x as f32,
-                        y: 0.0,
-                        z: z as f32,
-                    } - INSTANCE_DISPLACEMENT;
-
-                    let rotation = if position.is_zero() {
-                        // this is needed so an object at (0, 0, 0) won't get scaled to zero
-                        // as Quaternions can effect scale if they're not created correctly
-                        cgmath::Quaternion::from_axis_angle(
-                            cgmath::Vector3::unit_z(),
-                            cgmath::Deg(0.0),
-                        )
-                    } else {
-                        cgmath::Quaternion::from_axis_angle(position.normalize(), cgmath::Deg(45.0))
-                    };
-
-                    instance::Instance { position, rotation }
-                })
-            })
-            .collect::<Vec<_>>();*/
-
-        /*let obj_model = assets::load_model("cube.obj", &device, &queue, &texture_bind_group_layout)
-            .await
-            .unwrap();
-
-        let obj_model = models::sphere::Icosphere::new(1.0, 2).into_model(
-            &device,
-            &queue,
-            "Icosphere".to_string(),
-            [0.0, 1.0, 0.0, 1.0],
-            &texture_bind_group_layout,
-        );
-
-        const SPACE_BETWEEN: f32 = 3.0;
-        let instances = (0..NUM_INSTANCES_PER_ROW)
-            .flat_map(|z| {
-                (0..NUM_INSTANCES_PER_ROW).map(move |x| {
-                    let x = SPACE_BETWEEN * (x as f32 - NUM_INSTANCES_PER_ROW as f32 / 2.0);
-                    let z = SPACE_BETWEEN * (z as f32 - NUM_INSTANCES_PER_ROW as f32 / 2.0);
-
-                    let position = cgmath::Vector3 { x, y: 0.0, z };
-
-                    let rotation = if position.is_zero() {
-                        cgmath::Quaternion::from_axis_angle(
-                            cgmath::Vector3::unit_z(),
-                            cgmath::Deg(0.0),
-                        )
-                    } else {
-                        cgmath::Quaternion::from_axis_angle(position.normalize(), cgmath::Deg(45.0))
-                    };
-
-                    instance::Instance { position, rotation }
-                })
-            })
-            .collect::<Vec<_>>();
-
-        let instances = vec![instance::Instance {
-            position: [0.0; 3].into(),
-            rotation: cgmath::Quaternion::zero(),
-        }];
-
-        let instance_data = instances
-            .iter()
-            .map(instance::Instance::to_raw)
-            .collect::<Vec<_>>();
-
-        let instance_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-            label: Some("Instance Buffer"),
-            contents: bytemuck::cast_slice(&instance_data),
-            usage: wgpu::BufferUsages::VERTEX,
-        });*/
-
         Self {
             surface,
             device,
@@ -402,6 +301,8 @@ impl State {
         vertex_layouts: &[wgpu::VertexBufferLayout],
         shader: wgpu::ShaderModuleDescriptor,
     ) -> wgpu::RenderPipeline {
+        //! Creates a render pipeline
+
         let shader = device.create_shader_module(shader);
 
         device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
@@ -447,25 +348,33 @@ impl State {
     }
 
     pub fn resize(&mut self, new_size: winit::dpi::PhysicalSize<u32>) {
+        //! Handle a window size change
+
         if new_size.width > 0 && new_size.height > 0 {
             self.size = new_size;
             self.config.width = new_size.width;
             self.config.height = new_size.height;
             self.surface.configure(&self.device, &self.config);
 
+            // Update the depth texture to match the size of the window
             self.depth_texture =
                 texture::Texture::create_depth_texture(&self.device, &self.config, "depth_texture");
 
+            // Update the camera projection
             self.camera_projection
                 .resize(new_size.width, new_size.height);
         }
     }
 
     pub fn input(&mut self, event: &WindowEvent) -> bool {
+        //! Handle a window event input
         false
     }
 
     pub fn update(&mut self, dt: Duration, world: &mut World, dispatchers: &mut Dispatchers) {
+        //! Updatye the state
+
+        // Move the camera with the camera controller
         self.camera_controller.update_camera(&mut self.camera, dt);
         self.camera_uniform
             .update_view_proj(&self.camera, &self.camera_projection);
@@ -476,10 +385,12 @@ impl State {
             bytemuck::cast_slice(&[self.camera_uniform]),
         );
 
+        // Add the new delta time to Entity Component System
         world.exec(|(mut delta,): (Write<DeltaTime>,)| {
             delta.0 = dt;
         });
 
+        // Update the camera position and speed in the entity component system
         world.exec(
             |(mut camera_position, mut camera_speed): (
                 Write<CameraPosition>,
@@ -490,12 +401,22 @@ impl State {
             },
         );
 
+        // Run the simulation
         dispatchers.simulation_dispatcher.dispatch(world);
+
+        world.exec(
+            |(camera_position, camera_speed): (Read<CameraPosition>, Read<CameraSpeed>)| {
+                self.camera.position = camera_position.0;
+                self.camera_controller.set_speed(camera_speed.0);
+            },
+        );
     }
 
     pub fn render(&mut self, world: &mut World) -> Result<(), wgpu::SurfaceError> {
+        //! Render the next frame
         let output = self.surface.get_current_texture()?;
 
+        // Get all models from the entity component system
         world.exec(|(models,): (ReadStorage<RenderModel>,)| {
             let view = output
                 .texture
@@ -508,6 +429,7 @@ impl State {
                 });
 
             {
+                // Create a new render pass
                 let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                     label: Some("Render Pass"),
                     color_attachments: &[Some(wgpu::RenderPassColorAttachment {
@@ -528,29 +450,10 @@ impl State {
                     }),
                 });
 
-                //render_pass.set_vertex_buffer(1, self.instance_buffer.slice(..));
-
-                /*#[cfg(feature = "light")]
-                render_pass.set_pipeline(&self.light_render_pipeline);
-                #[cfg(feature = "light")]
-                render_pass.draw_light_model(
-                    &self.obj_model,
-                    &self.camera_bind_group,
-                    &self.light_bind_group,
-                );
-
-                render_pass.set_pipeline(&self.render_pipeline);
-                render_pass.draw_model_instanced(
-                    &self.obj_model,
-                    0..self.instances.len() as u32,
-                    &self.camera_bind_group,
-                    &self.light_bind_group,
-                );*/
-
-                //render_pass.draw_indexed(0..self.num_vertices, 0, 0..self.instances.len() as _);
-
+                // Set the render pipeline
                 render_pass.set_pipeline(&self.render_pipeline);
 
+                // Render each model
                 (&models).join().for_each(|model| {
                     render_pass.set_vertex_buffer(1, model.instance_buffer.slice(..));
                     render_pass.draw_model(
@@ -561,6 +464,7 @@ impl State {
                 })
             }
 
+            // Render the frame
             self.queue.submit(std::iter::once(encoder.finish()));
             output.present();
         });

@@ -24,6 +24,8 @@ impl From<BodyType> for InteractionFlags {
     }
 }
 
+/// Contains information about what body type an entity is
+// And what body types affect it (For optimisation)
 #[derive(Component)]
 #[storage(VecStorage)]
 pub struct InteractionHandler {
@@ -32,6 +34,7 @@ pub struct InteractionHandler {
 }
 impl InteractionHandler {
     pub fn new(flags: InteractionFlags, body_type: BodyType) -> Self {
+        //! Create a new interaction handler
         Self { flags, body_type }
     }
 }

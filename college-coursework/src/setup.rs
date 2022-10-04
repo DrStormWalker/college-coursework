@@ -12,7 +12,10 @@ use thiserror::Error;
 use crate::{
     models::sphere::Icosphere,
     panel::{BodyState, GlobalState, UiMessage},
-    renderer::{components::RenderModel, instance::Instance},
+    renderer::{
+        components::{CameraCenter, RenderModel, UpdateCameraDisplacement, UpdateCameraPosition},
+        instance::Instance,
+    },
     simulation::{
         self, ApplicationUpdater, BodyType, GravitationalConstant, Identifier, InstanceUpdater,
         InteractionFlags, InteractionHandler, Mass, Position, PositionScaleFactor, Simulator,
@@ -35,8 +38,10 @@ pub async fn setup<'a, 'b>(
     sender: app::Sender<UiMessage>,
     receiver: Receiver<UiMessage>,
 ) -> Result<(World, Dispatchers<'a, 'b>), SetupError> {
+    //! Setup the Enityt Component System
     let mut world = World::new();
 
+    // Register the components
     world.register::<Identifier>();
     world.register::<Position>();
     world.register::<Velocity>();
@@ -44,6 +49,7 @@ pub async fn setup<'a, 'b>(
     world.register::<RenderModel>();
     world.register::<InteractionHandler>();
 
+    // Create the Sun entity
     world
         .create_entity()
         .with(SUN.get_identifier())
@@ -69,6 +75,7 @@ pub async fn setup<'a, 'b>(
         ))
         .build();
 
+    // Create the planets
     for planet in simulation::planets() {
         world
             .create_entity()
@@ -99,11 +106,14 @@ pub async fn setup<'a, 'b>(
             .build();
     }
 
+    // Add the global states to thje Entity Component System
     world.insert(queue);
     world.insert(TimeScale::new(3155760.0, 20));
     world.insert(GravitationalConstant(BIG_G));
     world.insert(PositionScaleFactor(4_000_000_000.0));
+    world.insert(CameraCenter::new(SUN.get_identifier()));
 
+    // Update all of the global states in the Ui
     world.exec(
         |(identifiers, masses, time_scale, constant, scale_factor): (
             ReadStorage<Identifier>,
@@ -133,18 +143,33 @@ pub async fn setup<'a, 'b>(
         },
     );
 
+    // Register the systems
     let simulation_dispatcher = DispatcherBuilder::new()
-        .with(Simulator::new(), "sys_simulator", &[])
+        .with(
+            UpdateCameraDisplacement {},
+            "sys_update_camera_displacement",
+            &[],
+        )
+        .with(
+            Simulator::new(),
+            "sys_simulator",
+            &["sys_update_camera_displacement"],
+        )
         .with(
             InstanceUpdater::new(),
             "sys_instance_updater",
             &["sys_simulator"],
         )
-        .with(UiUpdater::new(sender), "sys_ui_updater", &["sys_simulator"])
+        .with(UpdateCameraPosition {}, "sys_update_camera_position", &[])
         .with(
             ApplicationUpdater::new(receiver),
             "sys_app_updater",
-            &["sys_simulator"],
+            &["sys_simulator", "sys_update_camera_position"],
+        )
+        .with(
+            UiUpdater::new(sender),
+            "sys_ui_updater",
+            &["sys_simulator", "sys_update_camera_position"],
         )
         .build();
 

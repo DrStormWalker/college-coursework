@@ -18,7 +18,7 @@ struct VertexInput {
     @location(2) normal: vec3<f32>,
     @location(3) tangent: vec3<f32>,
     @location(4) bitangent: vec3<f32>,
-}
+};
 struct InstanceInput {
     @location(5) model_matrix_0: vec4<f32>,
     @location(6) model_matrix_1: vec4<f32>,
@@ -27,7 +27,7 @@ struct InstanceInput {
     @location(9) normal_matrix_0: vec3<f32>,
     @location(10) normal_matrix_1: vec3<f32>,
     @location(11) normal_matrix_2: vec3<f32>,
-}
+};
 
 struct VertexOutput {
     @builtin(position) clip_position: vec4<f32>,
@@ -35,7 +35,7 @@ struct VertexOutput {
     @location(1) tangent_position: vec3<f32>,
     @location(2) tangent_light_position: vec3<f32>,
     @location(3) tangent_view_position: vec3<f32>,
-}
+};
 
 @vertex
 fn vs_main(
@@ -66,6 +66,7 @@ fn vs_main(
 
     let world_position = model_matrix * vec4<f32>(model.position, 1.0);
 
+    // Calculate the vertex location, and output it
     var out: VertexOutput;
     out.clip_position = camera.view_proj * world_position;
     out.tex_coords = model.tex_coords;
@@ -79,9 +80,9 @@ fn vs_main(
 
 @group(0) @binding(0)
 var t_diffuse: texture_2d<f32>;
-@group(0)@binding(1)
+@group(0) @binding(1)
 var s_diffuse: sampler;
-@group(0)@binding(2)
+@group(0) @binding(2)
 var t_normal: texture_2d<f32>;
 @group(0) @binding(3)
 var s_normal: sampler;
@@ -91,7 +92,7 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
     let object_colour: vec4<f32> = textureSample(t_diffuse, s_diffuse, in.tex_coords);
     let object_normal: vec4<f32> = textureSample(t_normal, s_normal, in.tex_coords);
     
-    // We don't need (or want) much ambient light, so 0.1 is fine
+    // Create ambient light
     let ambient_strength = 0.5;
     let ambient_colour = light.colour * ambient_strength;
 
@@ -103,14 +104,12 @@ fn fs_main(in: VertexOutput) -> @location(0) vec4<f32> {
 
     let diffuse_strength = max(dot(tangent_normal, light_dir), 0.0);
 
-    //let diffuse_colour = light.colour * diffuse_strength;
     let diffuse_colour = vec3<f32>(0.0, 0.0, 0.0) * diffuse_strength;
 
     let specular_strength = pow(max(dot(tangent_normal, half_dir), 0.0), 32.0);
-    //let specular_colour = specular_strength * light.colour;
     let specular_colour = specular_strength * vec3<f32>(0.0, 0.0, 0.0);
 
+    // Output the colour of the pixel
     let result = (ambient_colour + diffuse_colour + specular_colour) * object_colour.xyz;
-
     return vec4<f32>(result, object_colour.a);
 }

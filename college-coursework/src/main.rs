@@ -70,10 +70,13 @@ fn main() -> Result<(), ApplicationError> {
         .attach_printable("Failed to build Async Runtime")
         .change_context(ApplicationError::RuntimeBuildError)?;
 
+    // Run the setup code within an async runtime
     let (window, world, dispatchers) = runtime
         .block_on(async {
+            // Create the main window
             let window = crate::renderer::window::Window::new().await;
 
+            // Setup the Entity Component System
             let (world, dispatchers) = setup::setup(
                 &window.state.device,
                 window.state.queue.clone(),
@@ -88,13 +91,16 @@ fn main() -> Result<(), ApplicationError> {
         })
         .change_context(ApplicationError::SetupError)?;
 
+    // Get all the identifiers of the registered planets
     let ids = {
         let (ids,): (ReadStorage<Identifier>,) = world.system_data();
 
         (&ids).join().map(|id| id.clone()).collect::<Vec<_>>()
     };
 
+    // Setup and run the UI
     thread::spawn(move || {
+        // Setup the UI
         let panel = panel::Ui::new(
             700,
             700,
@@ -106,9 +112,11 @@ fn main() -> Result<(), ApplicationError> {
             ids,
         );
 
+        // Run the UI
         panel.run();
     });
 
+    // Rnu the main loop
     window.run(world, dispatchers);
     //Ok(())
 }

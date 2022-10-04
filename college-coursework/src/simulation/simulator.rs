@@ -68,6 +68,8 @@ impl<'a> System<'a> for Simulator {
                         .join()
                         // Make sure the body does not try to interact with itself
                         .filter(|(o, _pos, _mass, _interaction_handler)| e.id() != o.id())
+                        // Stop different types of bodys interacting if it will have negligable effect
+                        // e.g. (planet effecting the sun)
                         .filter(|(_, _pos, _mass, other_interaction_handler)| {
                             let other_flags: InteractionFlags =
                                 other_interaction_handler.body_type.into();
@@ -235,8 +237,8 @@ impl<'a> System<'a> for ApplicationUpdater {
         &mut self,
         (
             identifiers,
-            positions,
-            velocities,
+            mut positions,
+            mut velocities,
             mut masses,
             mut gravitational_constant,
             mut scale_factor,
@@ -251,7 +253,34 @@ impl<'a> System<'a> for ApplicationUpdater {
                         .join()
                         .filter(|(identifier, _mass)| identifier.get_id() == &id)
                         .for_each(|(_id, mass)| mass.0 = new_mass),
-                    _ => {}
+                    BodyState::ChangePosition(component) => match component {
+                        VectorStateChange::X(x) => (&identifiers, &mut positions)
+                            .join()
+                            .filter(|(identifier, _)| identifier.get_id() == &id)
+                            .for_each(|(_id, position)| position.0.x = x),
+                        VectorStateChange::Y(y) => (&identifiers, &mut positions)
+                            .join()
+                            .filter(|(identifier, _)| identifier.get_id() == &id)
+                            .for_each(|(_id, position)| position.0.y = y),
+                        VectorStateChange::Z(z) => (&identifiers, &mut positions)
+                            .join()
+                            .filter(|(identifier, _)| identifier.get_id() == &id)
+                            .for_each(|(_id, position)| position.0.z = z),
+                    },
+                    BodyState::ChangeVelocity(component) => match component {
+                        VectorStateChange::X(x) => (&identifiers, &mut velocities)
+                            .join()
+                            .filter(|(identifier, _)| identifier.get_id() == &id)
+                            .for_each(|(_id, velocity)| velocity.0.x = x),
+                        VectorStateChange::Y(y) => (&identifiers, &mut velocities)
+                            .join()
+                            .filter(|(identifier, _)| identifier.get_id() == &id)
+                            .for_each(|(_id, velocity)| velocity.0.y = y),
+                        VectorStateChange::Z(z) => (&identifiers, &mut velocities)
+                            .join()
+                            .filter(|(identifier, _)| identifier.get_id() == &id)
+                            .for_each(|(_id, velocity)| velocity.0.z = z),
+                    },
                 },
                 UiMessage::GlobalState(state) => match state {
                     GlobalState::ChangeCameraPosition(component) => match component {
@@ -264,7 +293,6 @@ impl<'a> System<'a> for ApplicationUpdater {
                         gravitational_constant.0 = constant
                     }
                     GlobalState::ChangeScale(scale) => scale_factor.0 = scale,
-                    _ => {}
                 },
             }
         }

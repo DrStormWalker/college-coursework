@@ -2,6 +2,7 @@ use std::ops::Range;
 
 use super::model::{Mesh, Model};
 
+/// Data structure representing the position and colour of a light
 #[repr(C)]
 #[derive(Debug, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct LightUniform {
@@ -21,7 +22,7 @@ impl LightUniform {
     }
 }
 
-// model.rs
+/// Trait for use by the render pipeline to draw a light
 pub trait DrawLight<'a> {
     fn draw_light_mesh(
         &mut self,

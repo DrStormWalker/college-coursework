@@ -9,12 +9,14 @@ use crate::simulation::Identifier;
 
 use super::{BodyState, UiMessage, VectorStateChange};
 
+/// Data structure to store the inputs for each component of a vector
 pub struct VectorFloatInput {
     pub x: FloatInput,
     pub y: FloatInput,
     pub z: FloatInput,
 }
 
+/// Data structure representing a tab in the napnel UI
 pub struct Tab {
     pub id: String,
     pub position: VectorFloatInput,
@@ -31,11 +33,14 @@ impl Tab {
         sender_ui: Sender<UiMessage>,
         id_string: String,
     ) -> Self {
+        //! Create a new tab for the body with identifier `id_string`
+
         let group = Group::new(x, y, width, height, "").with_label(label);
 
         let mut pack = Pack::new(x + 5, y + 25, width - 5, height - 10, "");
         pack.set_spacing(20);
 
+        // Create a widget for the position of the body
         let mut position = Flex::default()
             .with_size(width, 20)
             .with_label("Position")
@@ -45,9 +50,12 @@ impl Tab {
         let mut pos_y = FloatInput::default().with_label("Y");
         let mut pos_z = FloatInput::default().with_label("Z");
 
+        // Communicate a change in the position of the body with the
+        // main thread
         let sender = sender_ui.clone();
         let id = id_string.clone();
         pos_x.set_callback(move |input| {
+            // Validate the new value to ensure it is a float
             let value: Result<f64, _> = input.value().parse();
             if let Ok(value) = value {
                 let _ = sender.send(UiMessage::BodyState {
@@ -60,6 +68,7 @@ impl Tab {
         let sender = sender_ui.clone();
         let id = id_string.clone();
         pos_y.set_callback(move |input| {
+            // Validate the new value to ensure it is a float
             let value: Result<f64, _> = input.value().parse();
             if let Ok(value) = value {
                 let _ = sender.send(UiMessage::BodyState {
@@ -72,6 +81,7 @@ impl Tab {
         let sender = sender_ui.clone();
         let id = id_string.clone();
         pos_z.set_callback(move |input| {
+            // Validate the new value to ensure it is a float
             let value: Result<f64, _> = input.value().parse();
             if let Ok(value) = value {
                 let _ = sender.send(UiMessage::BodyState {
@@ -85,6 +95,7 @@ impl Tab {
         let id = id_string.clone();
         position.end();
 
+        // Create a widget for the velocity of the body
         let mut velocity = Flex::default()
             .with_size(width, 20)
             .with_label("Velocity")
@@ -94,9 +105,12 @@ impl Tab {
         let mut vel_y = FloatInput::default().with_label("Y");
         let mut vel_z = FloatInput::default().with_label("Z");
 
+        // Communicate a change in the velocity of the body with the
+        // main thread
         let sender = sender_ui.clone();
         let id = id_string.clone();
         vel_x.set_callback(move |input| {
+            // Validate the new value to ensure it is a float
             let value: Result<f64, _> = input.value().parse();
             if let Ok(value) = value {
                 let _ = sender.send(UiMessage::BodyState {
@@ -109,6 +123,7 @@ impl Tab {
         let sender = sender_ui.clone();
         let id = id_string.clone();
         vel_y.set_callback(move |input| {
+            // Validate the new value to ensure it is a float
             let value: Result<f64, _> = input.value().parse();
             if let Ok(value) = value {
                 let _ = sender.send(UiMessage::BodyState {
@@ -121,6 +136,7 @@ impl Tab {
         let sender = sender_ui.clone();
         let id = id_string.clone();
         vel_z.set_callback(move |input| {
+            // Validate the new value to ensure it is a float
             let value: Result<f64, _> = input.value().parse();
             if let Ok(value) = value {
                 let _ = sender.send(UiMessage::BodyState {
@@ -132,15 +148,19 @@ impl Tab {
 
         velocity.end();
 
+        // Create a widget for the mass of the body
         let mass = Flex::default()
             .with_size(width, 20)
             .with_label("Mass")
             .row();
         let mut mass_input = FloatInput::default();
 
+        // Communicate a change in the mass of the body with the
+        // main thread
         let sender = sender_ui.clone();
         let id = id_string.clone();
         mass_input.set_callback(move |input| {
+            // Validate the new value to ensure it is a float
             let value: Result<f64, _> = input.value().parse();
             if let Ok(value) = value {
                 let _ = sender.send(UiMessage::BodyState {

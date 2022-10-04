@@ -4,6 +4,7 @@ use wgpu::util::DeviceExt;
 
 use super::{texture, vertex::Vertex};
 
+/// Data sturcture representing a vertex of a model
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct ModelVertex {
@@ -17,6 +18,8 @@ pub struct ModelVertex {
 
 impl Vertex for ModelVertex {
     fn desc<'a>() -> wgpu::VertexBufferLayout<'a> {
+        //! Returns the vertex buffer layout of the ModelVertex
+
         use std::mem;
         wgpu::VertexBufferLayout {
             array_stride: mem::size_of::<ModelVertex>() as wgpu::BufferAddress,
@@ -52,11 +55,13 @@ impl Vertex for ModelVertex {
     }
 }
 
+/// Represents a model for rendering
 pub struct Model {
     pub meshes: Vec<Mesh>,
     pub materials: Vec<Material>,
 }
 
+// Represents a material for use by meshes in models
 pub struct Material {
     pub name: String,
     pub diffuse_texture: texture::Texture,
@@ -72,6 +77,9 @@ impl Material {
         normal_texture: texture::Texture, // NEW!
         layout: &wgpu::BindGroupLayout,
     ) -> Self {
+        //! Creates a new material with the specified textures
+
+        // Create a bind group for the material
         let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             layout,
             entries: &[
@@ -104,6 +112,7 @@ impl Material {
     }
 }
 
+/// Represents a mesh with a vertex and index buffer
 pub struct Mesh {
     pub name: String,
     pub vertex_buffer: wgpu::Buffer,
@@ -119,6 +128,8 @@ impl Mesh {
         indices: Vec<u32>,
         material: usize,
     ) -> Self {
+        //! Creates a new mesh from the given vertex and index buffers
+
         let vertex_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some(&format!("{:?} Vertex Buffer", name)),
             contents: bytemuck::cast_slice(&vertices),
@@ -141,6 +152,7 @@ impl Mesh {
     }
 }
 
+/// Trait used to define a method for a render pipeline to draw a mesh
 pub trait DrawModel<'a> {
     fn draw_mesh(
         &mut self,

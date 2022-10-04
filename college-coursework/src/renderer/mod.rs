@@ -4,7 +4,6 @@ pub mod instance;
 pub mod light;
 pub mod model;
 pub mod state;
-pub mod systems;
 pub mod texture;
 pub mod vertex;
 pub mod window;

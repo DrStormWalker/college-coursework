@@ -132,6 +132,7 @@ impl<'a> System<'a> for Printer {
     }
 }
 
+/// System to update the values in the UI each frame
 pub struct UiUpdater {
     sender: app::Sender<UiMessage>,
 }
@@ -153,6 +154,8 @@ impl<'a> System<'a> for UiUpdater {
         &mut self,
         (identifiers, positions, velocities, camera_speed, camera_position): Self::SystemData,
     ) {
+        //! Send the new data to the UI
+
         (&identifiers, &positions, &velocities)
             .join()
             .for_each(|(id, position, velocity)| {
