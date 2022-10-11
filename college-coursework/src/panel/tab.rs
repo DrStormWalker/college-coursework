@@ -1,4 +1,4 @@
-use crossbeam::channel::Sender;
+/*use crossbeam::channel::Sender;
 use fltk::{
     group::{Flex, FlexType, Group, Pack, Tabs},
     input::FloatInput,
@@ -191,4 +191,4 @@ impl Tab {
             mass: mass_input,
         }
     }
-}
+}*/

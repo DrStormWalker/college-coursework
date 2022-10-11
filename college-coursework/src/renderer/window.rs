@@ -24,7 +24,7 @@ impl Window {
         let window = WindowBuilder::new().build(&event_loop).unwrap();
 
         // Initialise the program state
-        let state = State::new(&window).await;
+        let state = State::new(&window, &event_loop).await;
 
         Self {
             event_loop,
@@ -102,7 +102,7 @@ impl Window {
                 ref event,
                 window_id,
             } if window_id == window.id() => {
-                if !state.input(event) {
+                if !state.on_event(event) {
                     match event {
                         WindowEvent::CloseRequested
                         | WindowEvent::KeyboardInput {
@@ -155,7 +155,7 @@ impl Window {
                 state.update(dt, &mut world, &mut dispatchers);
 
                 // Render the next frame
-                match state.render(&mut world) {
+                match state.render(&mut world, &window) {
                     Ok(_) => {}
                     Err(wgpu::SurfaceError::Lost | wgpu::SurfaceError::Outdated) => {
                         state.resize(state.size)

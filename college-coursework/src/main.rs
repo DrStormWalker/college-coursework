@@ -27,7 +27,7 @@ use specs::{Join, ReadStorage};
 use thiserror::Error;
 use tokio::io;
 
-use crate::{args::Args, panel::PanelChannels, simulation::Identifier};
+use crate::{args::Args, simulation::Identifier};
 use clap::Parser;
 
 const APPLICATION_NAME: &'static str = crate_name!();
@@ -59,9 +59,6 @@ fn main() -> Result<(), ApplicationError> {
     #[cfg(debug_assertions)]
     info!("Running in debug mode");
 
-    let (sender_ui, receiver_ui) = channel::unbounded();
-    let (sender_app, receiver_app) = app::channel();
-
     // Setup a new async runtime throwing an error if it did not
     let runtime = tokio::runtime::Builder::new_current_thread()
         .enable_all()
@@ -81,8 +78,6 @@ fn main() -> Result<(), ApplicationError> {
                 &window.state.device,
                 window.state.queue.clone(),
                 &window.state.texture_bind_group_layout,
-                sender_app,
-                receiver_ui,
             )
             .await
             .attach_printable("Failed to set up application")?;
@@ -98,25 +93,7 @@ fn main() -> Result<(), ApplicationError> {
         (&ids).join().map(|id| id.clone()).collect::<Vec<_>>()
     };
 
-    // Setup and run the UI
-    thread::spawn(move || {
-        // Setup the UI
-        let panel = panel::Ui::new(
-            700,
-            700,
-            "College Coursework",
-            PanelChannels {
-                sender_ui,
-                receiver_app,
-            },
-            ids,
-        );
-
-        // Run the UI
-        panel.run();
-    });
-
-    // Rnu the main loop
+    // Run the main loop
     window.run(world, dispatchers);
     //Ok(())
 }

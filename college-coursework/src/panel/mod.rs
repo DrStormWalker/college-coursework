@@ -1,4 +1,4 @@
-mod tab;
+/*mod tab;
 
 use crossbeam::channel::{unbounded, Receiver, Sender};
 use fltk::{
@@ -381,4 +381,20 @@ impl Ui {
             }
         }
     }
+}*/
+
+mod global;
+mod vector_ui;
+
+pub use global::GlobalWindow;
+pub use vector_ui::*;
+
+pub trait View {
+    fn ui(&mut self, ui: &mut egui::Ui);
+}
+
+pub trait Window {
+    fn name(&self) -> &'static str;
+
+    fn show(&mut self, ctx: &egui::Context, open: &mut bool);
 }

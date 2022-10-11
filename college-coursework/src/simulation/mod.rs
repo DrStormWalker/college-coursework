@@ -8,4 +8,4 @@ pub use components::{
     TimeScale, Velocity,
 };
 pub use planets::*;
-pub use simulator::{ApplicationUpdater, InstanceUpdater, Simulator, UiUpdater};
+pub use simulator::{InstanceUpdater, Simulator};

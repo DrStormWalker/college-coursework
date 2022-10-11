@@ -4,10 +4,7 @@ use instant::Duration;
 use log::{debug, info};
 use specs::{Component, Join, Read, ReadStorage, System, VecStorage};
 
-use crate::{
-    panel::{BodyState, GlobalState, UiMessage, VectorStateChange},
-    renderer::camera::{CameraPosition, CameraSpeed},
-};
+use crate::renderer::camera::{CameraPosition, CameraSpeed};
 
 // The position of an entity
 #[derive(Debug, Clone, Copy)]
@@ -129,85 +126,5 @@ impl<'a> System<'a> for Printer {
                     id.name, pos.0, vel.0, mass.0,
                 );
             });
-    }
-}
-
-/// System to update the values in the UI each frame
-pub struct UiUpdater {
-    sender: app::Sender<UiMessage>,
-}
-impl UiUpdater {
-    pub fn new(sender: app::Sender<UiMessage>) -> Self {
-        Self { sender }
-    }
-}
-impl<'a> System<'a> for UiUpdater {
-    type SystemData = (
-        ReadStorage<'a, Identifier>,
-        ReadStorage<'a, Position>,
-        ReadStorage<'a, Velocity>,
-        Read<'a, CameraSpeed>,
-        Read<'a, CameraPosition>,
-    );
-
-    fn run(
-        &mut self,
-        (identifiers, positions, velocities, camera_speed, camera_position): Self::SystemData,
-    ) {
-        //! Send the new data to the UI
-
-        (&identifiers, &positions, &velocities)
-            .join()
-            .for_each(|(id, position, velocity)| {
-                self.sender.send(UiMessage::BodyState {
-                    id: id.get_id().to_string(),
-                    state: BodyState::ChangePosition(VectorStateChange::X(position.0.x)),
-                });
-
-                self.sender.send(UiMessage::BodyState {
-                    id: id.get_id().to_string(),
-                    state: BodyState::ChangePosition(VectorStateChange::Y(position.0.y)),
-                });
-
-                self.sender.send(UiMessage::BodyState {
-                    id: id.get_id().to_string(),
-                    state: BodyState::ChangePosition(VectorStateChange::Z(position.0.z)),
-                });
-
-                self.sender.send(UiMessage::BodyState {
-                    id: id.get_id().to_string(),
-                    state: BodyState::ChangeVelocity(VectorStateChange::X(velocity.0.x)),
-                });
-
-                self.sender.send(UiMessage::BodyState {
-                    id: id.get_id().to_string(),
-                    state: BodyState::ChangeVelocity(VectorStateChange::Y(velocity.0.y)),
-                });
-
-                self.sender.send(UiMessage::BodyState {
-                    id: id.get_id().to_string(),
-                    state: BodyState::ChangeVelocity(VectorStateChange::Z(velocity.0.z)),
-                });
-            });
-
-        self.sender
-            .send(UiMessage::GlobalState(GlobalState::ChangeCameraPosition(
-                VectorStateChange::X(camera_position.0.x as f64),
-            )));
-
-        self.sender
-            .send(UiMessage::GlobalState(GlobalState::ChangeCameraPosition(
-                VectorStateChange::Y(camera_position.0.y as f64),
-            )));
-
-        self.sender
-            .send(UiMessage::GlobalState(GlobalState::ChangeCameraPosition(
-                VectorStateChange::Z(camera_position.0.z as f64),
-            )));
-
-        self.sender
-            .send(UiMessage::GlobalState(GlobalState::ChangeCameraSpeed(
-                camera_speed.0 as f64,
-            )));
     }
 }

@@ -6,6 +6,7 @@ use specs::{Join, Read, ReadStorage, World, Write};
 use wgpu::{include_wgsl, util::DeviceExt};
 use winit::{
     event::{ElementState, KeyboardInput, MouseButton, WindowEvent},
+    event_loop::EventLoopWindowTarget,
     window::Window,
 };
 
@@ -61,9 +62,16 @@ pub struct State {
 
     depth_texture: texture::Texture,
     pub texture_bind_group_layout: wgpu::BindGroupLayout,
+    egui_state: egui_winit::State,
+    egui_ctx: egui::Context,
+    egui_render_pass: egui_wgpu::renderer::RenderPass,
+    global_window: crate::panel::GlobalWindow,
 }
 impl State {
-    pub async fn new(window: &Window) -> Self {
+    pub async fn new(
+        window: &Window,
+        event_loop_window_target: &EventLoopWindowTarget<()>,
+    ) -> Self {
         //! Create a new application state and render pipeline
 
         let size = window.inner_size();
@@ -92,9 +100,11 @@ impl State {
             .await
             .unwrap();
 
+        let surface_format = surface.get_supported_formats(&adapter)[0];
+
         let config = wgpu::SurfaceConfiguration {
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
-            format: surface.get_supported_formats(&adapter)[0],
+            format: surface_format,
             width: size.width,
             height: size.height,
             present_mode: wgpu::PresentMode::AutoVsync,
@@ -268,6 +278,10 @@ impl State {
             shader,
         );
 
+        let egui_state = egui_winit::State::new(event_loop_window_target);
+        let egui_ctx = egui::Context::default();
+        let egui_render_pass = egui_wgpu::renderer::RenderPass::new(&device, surface_format, 1);
+
         Self {
             surface,
             device,
@@ -290,6 +304,10 @@ impl State {
             camera_controller,
             depth_texture,
             texture_bind_group_layout,
+            egui_state,
+            egui_ctx,
+            egui_render_pass,
+            global_window: crate::panel::GlobalWindow::default(),
         }
     }
 
@@ -366,13 +384,13 @@ impl State {
         }
     }
 
-    pub fn input(&mut self, event: &WindowEvent) -> bool {
+    pub fn on_event(&mut self, event: &WindowEvent) -> bool {
         //! Handle a window event input
-        false
+        self.egui_state.on_event(&self.egui_ctx, event)
     }
 
     pub fn update(&mut self, dt: Duration, world: &mut World, dispatchers: &mut Dispatchers) {
-        //! Updatye the state
+        //! Update the state
 
         // Move the camera with the camera controller
         self.camera_controller.update_camera(&mut self.camera, dt);
@@ -412,7 +430,7 @@ impl State {
         );
     }
 
-    pub fn render(&mut self, world: &mut World) -> Result<(), wgpu::SurfaceError> {
+    pub fn render(&mut self, world: &mut World, window: &Window) -> Result<(), wgpu::SurfaceError> {
         //! Render the next frame
         let output = self.surface.get_current_texture()?;
 
@@ -427,6 +445,15 @@ impl State {
                 .create_command_encoder(&wgpu::CommandEncoderDescriptor {
                     label: Some("Render Encoder"),
                 });
+
+            let input = self.egui_state.take_egui_input(window);
+            let full_output = self.egui_ctx.run(input, |ctx| {
+                use crate::panel::Window as _;
+                let mut open = true;
+                self.global_window.show(ctx, &mut open);
+
+                //puffin_egui::profiler_window(ctx);
+            });
 
             {
                 // Create a new render pass
@@ -461,12 +488,49 @@ impl State {
                         &self.camera_bind_group,
                         &self.light_bind_group,
                     );
-                })
+                });
+            }
+
+            {
+                let paint_jobs = self.egui_ctx.tessellate(full_output.shapes);
+
+                let screen_descriptor = egui_wgpu::renderer::ScreenDescriptor {
+                    size_in_pixels: [self.size.width, self.size.height],
+                    pixels_per_point: self.egui_state.pixels_per_point(),
+                };
+
+                for (id, image_delta) in &full_output.textures_delta.set {
+                    self.egui_render_pass.update_texture(
+                        &self.device,
+                        &self.queue,
+                        *id,
+                        image_delta,
+                    );
+                }
+
+                self.egui_render_pass.update_buffers(
+                    &self.device,
+                    &self.queue,
+                    &paint_jobs,
+                    &screen_descriptor,
+                );
+
+                self.egui_render_pass.execute(
+                    &mut encoder,
+                    &view,
+                    &paint_jobs,
+                    &screen_descriptor,
+                    None,
+                );
             }
 
             // Render the frame
             self.queue.submit(std::iter::once(encoder.finish()));
             output.present();
+
+            for id in &full_output.textures_delta.free {
+                self.egui_render_pass.free_texture(id);
+            }
         });
 
         Ok(())

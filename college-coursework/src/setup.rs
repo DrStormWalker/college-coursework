@@ -11,15 +11,14 @@ use thiserror::Error;
 
 use crate::{
     models::sphere::Icosphere,
-    panel::{BodyState, GlobalState, UiMessage},
     renderer::{
         components::{CameraCenter, RenderModel, UpdateCameraDisplacement, UpdateCameraPosition},
         instance::Instance,
     },
     simulation::{
-        self, ApplicationUpdater, BodyType, GravitationalConstant, Identifier, InstanceUpdater,
-        InteractionFlags, InteractionHandler, Mass, Position, PositionScaleFactor, Simulator,
-        TimeScale, UiUpdater, Velocity, SUN,
+        self, BodyType, GravitationalConstant, Identifier, InstanceUpdater, InteractionFlags,
+        InteractionHandler, Mass, Position, PositionScaleFactor, Simulator, TimeScale, Velocity,
+        SUN,
     },
     util::BIG_G,
 };
@@ -35,8 +34,6 @@ pub async fn setup<'a, 'b>(
     device: &wgpu::Device,
     queue: Arc<wgpu::Queue>,
     texture_bind_group_layout: &wgpu::BindGroupLayout,
-    sender: app::Sender<UiMessage>,
-    receiver: Receiver<UiMessage>,
 ) -> Result<(World, Dispatchers<'a, 'b>), SetupError> {
     //! Setup the Enityt Component System
     let mut world = World::new();
@@ -113,36 +110,6 @@ pub async fn setup<'a, 'b>(
     world.insert(PositionScaleFactor(4_000_000_000.0));
     world.insert(CameraCenter::new(SUN.get_identifier()));
 
-    // Update all of the global states in the Ui
-    world.exec(
-        |(identifiers, masses, time_scale, constant, scale_factor): (
-            ReadStorage<Identifier>,
-            ReadStorage<Mass>,
-            ReadExpect<TimeScale>,
-            Read<GravitationalConstant>,
-            Read<PositionScaleFactor>,
-        )| {
-            sender.send(UiMessage::GlobalState(GlobalState::ChangeScale(
-                time_scale.total_time_elapsed,
-            )));
-
-            sender.send(UiMessage::GlobalState(
-                GlobalState::ChangeGravitationalConstant(constant.0),
-            ));
-
-            sender.send(UiMessage::GlobalState(GlobalState::ChangeScale(
-                scale_factor.0,
-            )));
-
-            (&identifiers, &masses).join().for_each(|(id, mass)| {
-                sender.send(UiMessage::BodyState {
-                    id: id.get_id().to_string(),
-                    state: BodyState::ChangeMass(mass.0),
-                });
-            });
-        },
-    );
-
     // Register the systems
     let simulation_dispatcher = DispatcherBuilder::new()
         .with(
@@ -161,16 +128,6 @@ pub async fn setup<'a, 'b>(
             &["sys_simulator"],
         )
         .with(UpdateCameraPosition {}, "sys_update_camera_position", &[])
-        .with(
-            ApplicationUpdater::new(receiver),
-            "sys_app_updater",
-            &["sys_simulator", "sys_update_camera_position"],
-        )
-        .with(
-            UiUpdater::new(sender),
-            "sys_ui_updater",
-            &["sys_simulator", "sys_update_camera_position"],
-        )
         .build();
 
     Ok((
