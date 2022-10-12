@@ -383,9 +383,11 @@ impl Ui {
     }
 }*/
 
+mod formatters;
 mod global;
 mod vector_ui;
 
+pub use formatters::*;
 pub use global::GlobalWindow;
 pub use vector_ui::*;
 

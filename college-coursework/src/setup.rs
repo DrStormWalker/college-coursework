@@ -3,7 +3,6 @@ use std::sync::Arc;
 use cgmath::{Quaternion, Vector3, Zero};
 use crossbeam::channel::Receiver;
 use error_stack::Result;
-use fltk::app;
 use specs::{
     Builder, Dispatcher, DispatcherBuilder, Join, Read, ReadExpect, ReadStorage, World, WorldExt,
 };

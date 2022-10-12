@@ -21,7 +21,6 @@ use ::log::info;
 use anyhow::Result as AnyResult;
 use crossbeam::channel;
 use error_stack::{IntoReport, Result, ResultExt};
-use fltk::app;
 use setup::SetupError;
 use specs::{Join, ReadStorage};
 use thiserror::Error;

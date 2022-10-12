@@ -1,5 +1,4 @@
 use cgmath::Vector3;
-use fltk::app;
 use instant::Duration;
 use log::{debug, info};
 use specs::{Component, Join, Read, ReadStorage, System, VecStorage};

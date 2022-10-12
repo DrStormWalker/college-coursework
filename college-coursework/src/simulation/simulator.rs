@@ -2,7 +2,6 @@ use std::sync::Arc;
 
 use cgmath::{InnerSpace, Quaternion, Zero};
 use crossbeam::channel::Receiver;
-use fltk::app;
 use log::debug;
 use rayon::prelude::*;
 use specs::{Entities, Join, ParJoin, Read, ReadExpect, ReadStorage, System, Write, WriteStorage};
