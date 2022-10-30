@@ -25,6 +25,21 @@ pub const OPENGL_TO_WGPU_MATRIX: cgmath::Matrix4<f32> = cgmath::Matrix4::new(
 
 const SAFE_FRAC_PI_2: f32 = FRAC_PI_2 - 0.0001;
 
+#[repr(C)]
+#[derive(Debug, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]
+pub struct CameraCenterUniform {
+    center: [f32; 4],
+}
+impl CameraCenterUniform {
+    pub fn new() -> Self {
+        Self { center: [0.0; 4] }
+    }
+
+    pub fn update_center(&mut self, center: Point3<f32>) {
+        self.center = center.to_homogeneous().into();
+    }
+}
+
 /// Position and transformation matrix of the camera for the GPU
 #[repr(C)]
 #[derive(Debug, Copy, Clone, bytemuck::Pod, bytemuck::Zeroable)]

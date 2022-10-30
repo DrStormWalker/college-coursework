@@ -385,18 +385,177 @@ impl Ui {
 
 mod formatters;
 mod global;
+mod help;
+mod planet;
 mod vector_ui;
 
+use cgmath::Point3;
 pub use formatters::*;
 pub use global::GlobalWindow;
+pub use planet::PlanetWindowShown;
 pub use vector_ui::*;
+
+use crate::simulation::{Identifier, SaveHandler, SimulationState, SUN};
+
+use self::{help::HelpWindow, planet::PlanetWindow};
 
 pub trait View {
     fn ui(&mut self, ui: &mut egui::Ui);
 }
 
 pub trait Window {
-    fn name(&self) -> &'static str;
+    fn name(&self) -> &str;
 
     fn show(&mut self, ctx: &egui::Context, open: &mut bool);
+}
+
+struct PlanetWindowInfo {
+    show: bool,
+}
+
+pub struct UiHandler {
+    help_window_shown: bool,
+    save_window_shown: bool,
+    load_window_shown: bool,
+    save_handler: SaveHandler,
+}
+impl Default for UiHandler {
+    fn default() -> Self {
+        Self {
+            help_window_shown: true,
+            save_window_shown: false,
+            load_window_shown: false,
+            save_handler: SaveHandler::new(),
+        }
+    }
+}
+impl UiHandler {
+    pub fn show(&mut self, ctx: &egui::Context, ecs_world: &mut specs::World) {
+        use crate::{
+            panel::global::{CameraControllerType, CameraSection, ConstantSection, TimeSection},
+            renderer::camera::{CameraPosition, CameraSpeed},
+            simulation::{GravitationalConstant, Mass, Position, TimeScale, Velocity},
+        };
+        use cgmath::EuclideanSpace as _;
+        use specs::{Join as _, ReadStorage, Write, WriteStorage};
+
+        ecs_world.exec(
+            |state: (
+                Write<CameraPosition>,
+                Write<CameraSpeed>,
+                Write<GravitationalConstant>,
+                Write<TimeScale>,
+                ReadStorage<Identifier>,
+                WriteStorage<PlanetWindowShown>,
+                WriteStorage<Position>,
+                WriteStorage<Velocity>,
+                WriteStorage<Mass>,
+            )| {
+                let (
+                    mut camera_position,
+                    mut camera_speed,
+                    mut gravitational_constant,
+                    mut time_scale,
+                    planet_id,
+                    mut planet_window_shown,
+                    mut planet_position,
+                    mut planet_velocity,
+                    mut planet_mass,
+                ) = state;
+
+                let mut camera_position_vector = camera_position.0.to_vec();
+                let mut time_scale_raw = time_scale.total_time_elapsed;
+                // TODO: Move to ECS
+                let mut camera_type = CameraControllerType::Free;
+                let mut current_date_time = chrono::Local::now();
+
+                GlobalWindow {
+                    camera_section: CameraSection {
+                        position: &mut camera_position_vector,
+                        speed: &mut camera_speed.0,
+                        controller_type: &mut camera_type,
+                    },
+                    constant_section: ConstantSection {
+                        gravitational_constant: &mut gravitational_constant.0,
+                    },
+                    time_section: TimeSection {
+                        time_scale: &mut time_scale_raw,
+                        current_date_time: &mut current_date_time,
+                    },
+
+                    help_window_shown: &mut self.help_window_shown,
+                    save_window_shown: &mut self.save_window_shown,
+                    load_window_shown: &mut self.load_window_shown,
+                    planet_windows_shown: (&planet_id, &mut planet_window_shown)
+                        .join()
+                        .map(|(id, shown)| (id.clone(), &mut shown.0))
+                        .collect(),
+                }
+                .show(ctx, &mut true);
+
+                camera_position.0 = Point3::from_vec(camera_position_vector);
+                *time_scale = TimeScale::from_max_time_per_iteration(time_scale_raw, 86400.0);
+
+                (
+                    &planet_id,
+                    &mut planet_window_shown,
+                    &mut planet_position,
+                    &mut planet_velocity,
+                    &mut planet_mass,
+                )
+                    .join()
+                    .for_each(|(id, shown, position, velocity, mass)| {
+                        PlanetWindow {
+                            id: id.clone(),
+                            position: &mut position.0,
+                            velociy: &mut velocity.0,
+                            mass: &mut mass.0,
+                        }
+                        .show(ctx, &mut shown.0);
+                    });
+            },
+        );
+
+        HelpWindow::default().show(ctx, &mut self.help_window_shown);
+
+        egui::Window::new("Save Simulation")
+            .collapsible(false)
+            .resizable(false)
+            .open(&mut self.save_window_shown)
+            .show(ctx, |ui| {
+                ui.horizontal(|ui| {
+                    if ui.button("Save as JSON").clicked() {
+                        SimulationState::serialize_from_world(ecs_world)
+                            .save_json()
+                            .unwrap()
+                    }
+
+                    if ui.button("Save as TOML").clicked() {
+                        SimulationState::serialize_from_world(ecs_world)
+                            .save_toml()
+                            .unwrap()
+                    }
+                });
+            });
+
+        egui::Window::new("Load Simulation")
+            .collapsible(false)
+            .resizable(false)
+            .open(&mut self.load_window_shown)
+            .show(ctx, |ui| {
+                ui.horizontal(|ui| {
+                    if ui.button("Load from JSON").clicked() {
+                        self.save_handler.load_json()
+                    }
+
+                    if ui.button("Load from TOML").clicked() {
+                        self.save_handler.load_toml()
+                    }
+                });
+            });
+
+        if let Ok(state) = self.save_handler.try_load_state() {
+            state.deserialize_to_world(ecs_world);
+        }
+    }
 }

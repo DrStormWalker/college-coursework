@@ -1,12 +1,13 @@
 use std::{fmt::Display, ops::RangeInclusive};
 
+use cgmath::Vector3;
 use chrono::{DateTime, Duration, NaiveDateTime, NaiveTime, TimeZone};
 use egui::{emath::Numeric, Widget};
 
 type NumFormatter<'a> = Box<dyn 'a + Fn(f64, RangeInclusive<usize>) -> String>;
 
 pub struct Vector3Value<'a, S: Numeric> {
-    values: &'a mut [S; 3],
+    value: &'a mut Vector3<S>,
     prefix: String,
     suffix: String,
     speed: f64,
@@ -14,9 +15,9 @@ pub struct Vector3Value<'a, S: Numeric> {
     labels: bool,
 }
 impl<'a, S: Numeric> Vector3Value<'a, S> {
-    pub fn new(values: &'a mut [S; 3]) -> Self {
+    pub fn new(value: &'a mut Vector3<S>) -> Self {
         Self {
-            values,
+            value,
             prefix: String::new(),
             suffix: String::new(),
             speed: 1.0,
@@ -55,10 +56,11 @@ impl<'a, S: Numeric> Vector3Value<'a, S> {
 }
 impl<'a, S: Numeric> Widget for Vector3Value<'a, S> {
     fn ui(self, ui: &mut egui::Ui) -> egui::Response {
-        ui.columns(3, |cols| {
+        let mut values: [S; 3] = (*self.value).into();
+        let response = ui.columns(3, |cols| {
             cols.iter_mut()
                 .zip(["x", "y", "z"].into_iter())
-                .zip(self.values.iter_mut())
+                .zip(values.iter_mut())
                 .map(|((ui, component), value)| {
                     ui.horizontal(|ui| {
                         if self.labels {
@@ -83,7 +85,11 @@ impl<'a, S: Numeric> Widget for Vector3Value<'a, S> {
                 })
                 .reduce(|a, b| a.union(b))
                 .unwrap()
-        })
+        });
+
+        *self.value = values.into();
+
+        response
     }
 }
 
@@ -122,7 +128,7 @@ where
         let mut value_text = date_time.format(format).to_string();
 
         let kb_edit_id = id.with(0);
-        let is_kb_editing = ui.memory().has_focus(id);
+        let is_kb_editing = ui.memory().has_focus(kb_edit_id);
 
         let mut response = if is_kb_editing {
             let button_width = ui.spacing().interact_size.x;

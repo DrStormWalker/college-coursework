@@ -8,6 +8,10 @@ use crate::simulation::{Identifier, Position, PositionScaleFactor};
 
 use super::{camera::CameraPosition, instance::Instance, model::Model};
 
+#[derive(Component)]
+#[storage(VecStorage)]
+pub struct PlanetColour(pub [f32; 4]);
+
 /// Represents a model in the Entity COmponent System
 #[derive(Component)]
 #[storage(VecStorage)]

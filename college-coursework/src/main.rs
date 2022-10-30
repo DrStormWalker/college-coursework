@@ -74,9 +74,9 @@ fn main() -> Result<(), ApplicationError> {
 
             // Setup the Entity Component System
             let (world, dispatchers) = setup::setup(
-                &window.state.device,
+                window.state.device.clone(),
                 window.state.queue.clone(),
-                &window.state.texture_bind_group_layout,
+                window.state.texture_bind_group_layout.clone(),
             )
             .await
             .attach_printable("Failed to set up application")?;

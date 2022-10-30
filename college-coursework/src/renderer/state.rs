@@ -1,6 +1,6 @@
 use std::{rc::Rc, sync::Arc};
 
-use cgmath::{Euler, InnerSpace, Rotation3, Zero};
+use cgmath::{Euler, InnerSpace, Point3, Rotation3, Zero};
 use instant::Duration;
 use specs::{Join, Read, ReadStorage, World, Write};
 use wgpu::{include_wgsl, util::DeviceExt};
@@ -14,7 +14,7 @@ use crate::{
     assets, models,
     renderer::{instance::InstanceRaw, light::LightUniform, vertex::Vertex},
     setup::Dispatchers,
-    simulation::DeltaTime,
+    simulation::{DeltaTime, Identifier, Position},
 };
 
 use super::{
@@ -39,7 +39,7 @@ pub struct RenderPassContainer<'a>(wgpu::RenderPass<'a>);
 /// The state of the application render
 pub struct State {
     surface: wgpu::Surface,
-    pub device: wgpu::Device,
+    pub device: Arc<wgpu::Device>,
     pub queue: Arc<wgpu::Queue>,
     config: wgpu::SurfaceConfiguration,
     pub size: winit::dpi::PhysicalSize<u32>,
@@ -56,16 +56,18 @@ pub struct State {
     camera_projection: camera::Projection,
     camera_uniform: camera::CameraUniform,
     camera_buffer: wgpu::Buffer,
+    camera_center_uniform: camera::CameraCenterUniform,
+    camera_center_buffer: wgpu::Buffer,
     camera_bind_group: wgpu::BindGroup,
     light_bind_group: wgpu::BindGroup,
     pub camera_controller: Box<dyn camera::CameraController>,
 
     depth_texture: texture::Texture,
-    pub texture_bind_group_layout: wgpu::BindGroupLayout,
+    pub texture_bind_group_layout: Arc<wgpu::BindGroupLayout>,
     egui_state: egui_winit::State,
     egui_ctx: egui::Context,
     egui_render_pass: egui_wgpu::renderer::RenderPass,
-    global_window: crate::panel::GlobalWindow,
+    ui_handler: crate::panel::UiHandler,
 }
 impl State {
     pub async fn new(
@@ -211,27 +213,55 @@ impl State {
             usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
         });
 
+        let mut camera_center_uniform = camera::CameraCenterUniform::new();
+
+        camera_center_uniform.update_center((0.0, 0.0, 0.0).into());
+
+        let camera_center_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Camera Center Buffer"),
+            contents: bytemuck::cast_slice(&[camera_center_uniform]),
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+        });
+
         let camera_bind_group_layout =
             device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
-                entries: &[wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Uniform,
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
+                entries: &[
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: wgpu::ShaderStages::VERTEX | wgpu::ShaderStages::FRAGMENT,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Uniform,
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
                     },
-                    count: None,
-                }],
+                    wgpu::BindGroupLayoutEntry {
+                        binding: 1,
+                        visibility: wgpu::ShaderStages::VERTEX,
+                        ty: wgpu::BindingType::Buffer {
+                            ty: wgpu::BufferBindingType::Uniform,
+                            has_dynamic_offset: false,
+                            min_binding_size: None,
+                        },
+                        count: None,
+                    },
+                ],
                 label: Some("camera_bind_group_layout"),
             });
 
         let camera_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             layout: &camera_bind_group_layout,
-            entries: &[wgpu::BindGroupEntry {
-                binding: 0,
-                resource: camera_buffer.as_entire_binding(),
-            }],
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: camera_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: camera_center_buffer.as_entire_binding(),
+                },
+            ],
             label: Some("camera_bind_group"),
         });
 
@@ -282,9 +312,23 @@ impl State {
         let egui_ctx = egui::Context::default();
         let egui_render_pass = egui_wgpu::renderer::RenderPass::new(&device, surface_format, 1);
 
+        let mut egui_fonts = egui::FontDefinitions::default();
+
+        egui_fonts.font_data.insert(
+            "keycap".to_owned(),
+            egui::FontData::from_static(include_bytes!("../../assets/fonts/BkcapRegular.ttf")),
+        );
+
+        egui_fonts.families.insert(
+            egui::FontFamily::Name("keycap".into()),
+            vec!["keycap".to_owned()],
+        );
+
+        egui_ctx.set_fonts(egui_fonts);
+
         Self {
             surface,
-            device,
+            device: Arc::new(device),
             queue: Arc::new(queue),
             config,
             size,
@@ -299,15 +343,17 @@ impl State {
             camera_projection,
             camera_uniform,
             camera_buffer,
+            camera_center_uniform,
+            camera_center_buffer,
             camera_bind_group,
             light_bind_group,
             camera_controller,
             depth_texture,
-            texture_bind_group_layout,
+            texture_bind_group_layout: Arc::new(texture_bind_group_layout),
             egui_state,
             egui_ctx,
             egui_render_pass,
-            global_window: crate::panel::GlobalWindow::default(),
+            ui_handler: crate::panel::UiHandler::default(),
         }
     }
 
@@ -408,6 +454,14 @@ impl State {
             delta.0 = dt;
         });
 
+        // Run the simulation
+        dispatchers.simulation_dispatcher.dispatch(world);
+    }
+
+    pub fn render(&mut self, world: &mut World, window: &Window) -> Result<(), wgpu::SurfaceError> {
+        //! Render the next frame
+        let output = self.surface.get_current_texture()?;
+
         // Update the camera position and speed in the entity component system
         world.exec(
             |(mut camera_position, mut camera_speed): (
@@ -419,8 +473,12 @@ impl State {
             },
         );
 
-        // Run the simulation
-        dispatchers.simulation_dispatcher.dispatch(world);
+        let input = self.egui_state.take_egui_input(window);
+        let full_output = self.egui_ctx.run(input, |ctx| {
+            self.ui_handler.show(ctx, world);
+
+            //puffin_egui::profiler_window(ctx);
+        });
 
         world.exec(
             |(camera_position, camera_speed): (Read<CameraPosition>, Read<CameraSpeed>)| {
@@ -428,110 +486,117 @@ impl State {
                 self.camera_controller.set_speed(camera_speed.0);
             },
         );
-    }
-
-    pub fn render(&mut self, world: &mut World, window: &Window) -> Result<(), wgpu::SurfaceError> {
-        //! Render the next frame
-        let output = self.surface.get_current_texture()?;
 
         // Get all models from the entity component system
-        world.exec(|(models,): (ReadStorage<RenderModel>,)| {
-            let view = output
-                .texture
-                .create_view(&wgpu::TextureViewDescriptor::default());
+        world.exec(
+            |(ids, positions, models): (
+                ReadStorage<Identifier>,
+                ReadStorage<Position>,
+                ReadStorage<RenderModel>,
+            )| {
+                let view = output
+                    .texture
+                    .create_view(&wgpu::TextureViewDescriptor::default());
 
-            let mut encoder = self
-                .device
-                .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                    label: Some("Render Encoder"),
-                });
+                let mut encoder =
+                    self.device
+                        .create_command_encoder(&wgpu::CommandEncoderDescriptor {
+                            label: Some("Render Encoder"),
+                        });
 
-            let input = self.egui_state.take_egui_input(window);
-            let full_output = self.egui_ctx.run(input, |ctx| {
-                use crate::panel::Window as _;
-                let mut open = true;
-                self.global_window.show(ctx, &mut open);
-
-                //puffin_egui::profiler_window(ctx);
-            });
-
-            {
-                // Create a new render pass
-                let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                    label: Some("Render Pass"),
-                    color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                        view: &view,
-                        resolve_target: None,
-                        ops: wgpu::Operations {
-                            load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
-                            store: true,
-                        },
-                    })],
-                    depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
-                        view: &self.depth_texture.view,
-                        depth_ops: Some(wgpu::Operations {
-                            load: wgpu::LoadOp::Clear(1.0),
-                            store: true,
+                {
+                    // Create a new render pass
+                    let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                        label: Some("Render Pass"),
+                        color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                            view: &view,
+                            resolve_target: None,
+                            ops: wgpu::Operations {
+                                load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
+                                store: true,
+                            },
+                        })],
+                        depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
+                            view: &self.depth_texture.view,
+                            depth_ops: Some(wgpu::Operations {
+                                load: wgpu::LoadOp::Clear(1.0),
+                                store: true,
+                            }),
+                            stencil_ops: None,
                         }),
-                        stencil_ops: None,
-                    }),
-                });
+                    });
 
-                // Set the render pipeline
-                render_pass.set_pipeline(&self.render_pipeline);
+                    // Set the render pipeline
+                    render_pass.set_pipeline(&self.render_pipeline);
 
-                // Render each model
-                (&models).join().for_each(|model| {
-                    render_pass.set_vertex_buffer(1, model.instance_buffer.slice(..));
-                    render_pass.draw_model(
-                        &model.model,
-                        &self.camera_bind_group,
-                        &self.light_bind_group,
-                    );
-                });
-            }
+                    // Render each model
+                    (&models).join().for_each(|model| {
+                        render_pass.set_vertex_buffer(1, model.instance_buffer.slice(..));
+                        render_pass.draw_model(
+                            &model.model,
+                            &self.camera_bind_group,
+                            &self.light_bind_group,
+                        );
+                    });
 
-            {
-                let paint_jobs = self.egui_ctx.tessellate(full_output.shapes);
+                    (&ids, &models)
+                        .join()
+                        .filter(|(id, _)| id.get_id() == "earth")
+                        .for_each(|(_, model)| {
+                            use cgmath::EuclideanSpace as _;
+                            let position = Point3::from_vec(model.instance.position);
+                            self.camera_center_uniform.update_center(position);
 
-                let screen_descriptor = egui_wgpu::renderer::ScreenDescriptor {
-                    size_in_pixels: [self.size.width, self.size.height],
-                    pixels_per_point: self.egui_state.pixels_per_point(),
-                };
+                            self.queue.write_buffer(
+                                &self.camera_center_buffer,
+                                0,
+                                bytemuck::cast_slice(&[self.camera_center_uniform]),
+                            );
+                        });
+                }
 
-                for (id, image_delta) in &full_output.textures_delta.set {
-                    self.egui_render_pass.update_texture(
+                {
+                    let paint_jobs = self.egui_ctx.tessellate(full_output.shapes);
+
+                    let screen_descriptor = egui_wgpu::renderer::ScreenDescriptor {
+                        size_in_pixels: [self.size.width, self.size.height],
+                        pixels_per_point: self.egui_state.pixels_per_point(),
+                    };
+
+                    for (id, image_delta) in &full_output.textures_delta.set {
+                        self.egui_render_pass.update_texture(
+                            &self.device,
+                            &self.queue,
+                            *id,
+                            image_delta,
+                        );
+                    }
+
+                    self.egui_render_pass.update_buffers(
                         &self.device,
                         &self.queue,
-                        *id,
-                        image_delta,
+                        &paint_jobs,
+                        &screen_descriptor,
+                    );
+
+                    self.egui_render_pass.execute(
+                        &mut encoder,
+                        &view,
+                        &paint_jobs,
+                        &screen_descriptor,
+                        None,
                     );
                 }
 
-                self.egui_render_pass.update_buffers(
-                    &self.device,
-                    &self.queue,
-                    &paint_jobs,
-                    &screen_descriptor,
-                );
+                // Render the frame
+                self.queue.submit(std::iter::once(encoder.finish()));
+                output.present();
 
-                self.egui_render_pass.execute(
-                    &mut encoder,
-                    &view,
-                    &paint_jobs,
-                    &screen_descriptor,
-                    None,
-                );
-            }
-
-            // Render the frame
-            self.queue.submit(std::iter::once(encoder.finish()));
-            output.present();
-
-            for id in &full_output.textures_delta.free {
-                self.egui_render_pass.free_texture(id);
-            }
-        });
+                for id in &full_output.textures_delta.free {
+                    self.egui_render_pass.free_texture(id);
+                }
+            },
+        );
 
         Ok(())
     }

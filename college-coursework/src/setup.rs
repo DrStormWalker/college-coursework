@@ -10,8 +10,11 @@ use thiserror::Error;
 
 use crate::{
     models::sphere::Icosphere,
+    panel::PlanetWindowShown,
     renderer::{
-        components::{CameraCenter, RenderModel, UpdateCameraDisplacement, UpdateCameraPosition},
+        components::{
+            CameraCenter, PlanetColour, RenderModel, UpdateCameraDisplacement, UpdateCameraPosition,
+        },
         instance::Instance,
     },
     simulation::{
@@ -30,18 +33,20 @@ pub struct Dispatchers<'a, 'b> {
 }
 
 pub async fn setup<'a, 'b>(
-    device: &wgpu::Device,
+    device: Arc<wgpu::Device>,
     queue: Arc<wgpu::Queue>,
-    texture_bind_group_layout: &wgpu::BindGroupLayout,
+    texture_bind_group_layout: Arc<wgpu::BindGroupLayout>,
 ) -> Result<(World, Dispatchers<'a, 'b>), SetupError> {
     //! Setup the Enityt Component System
     let mut world = World::new();
 
     // Register the components
     world.register::<Identifier>();
+    world.register::<PlanetWindowShown>();
     world.register::<Position>();
     world.register::<Velocity>();
     world.register::<Mass>();
+    world.register::<PlanetColour>();
     world.register::<RenderModel>();
     world.register::<InteractionHandler>();
 
@@ -49,17 +54,19 @@ pub async fn setup<'a, 'b>(
     world
         .create_entity()
         .with(SUN.get_identifier())
+        .with(PlanetWindowShown::default())
         .with(SUN.get_pos())
         .with(SUN.get_vel())
         .with(SUN.get_mass())
+        .with(PlanetColour(SUN.get_colour()))
         .with(RenderModel::new(
-            device,
+            &device,
             Icosphere::new(8.0, 4).into_model(
-                device,
+                &device,
                 &queue,
                 "The Sun".into(),
                 SUN.get_colour(),
-                texture_bind_group_layout,
+                &texture_bind_group_layout,
             ),
             Instance::new([0.0; 3].into(), Quaternion::zero()),
             wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
@@ -76,17 +83,19 @@ pub async fn setup<'a, 'b>(
         world
             .create_entity()
             .with(planet.get_identifier())
+            .with(PlanetWindowShown::default())
             .with(planet.get_pos())
             .with(planet.get_vel())
             .with(planet.get_mass())
+            .with(PlanetColour(planet.get_colour()))
             .with(RenderModel::new(
-                device,
+                &device,
                 Icosphere::new(2.5, 3).into_model(
-                    device,
+                    &device,
                     &queue,
                     planet.get_identifier().get_id().to_string(),
                     planet.get_colour(),
-                    texture_bind_group_layout,
+                    &texture_bind_group_layout,
                 ),
                 Instance::new(
                     planet.get_pos().0.map(|a| a as f32) / 4_000_000_000.0,
@@ -103,7 +112,9 @@ pub async fn setup<'a, 'b>(
     }
 
     // Add the global states to thje Entity Component System
+    world.insert(device);
     world.insert(queue);
+    world.insert(texture_bind_group_layout);
     world.insert(TimeScale::new(3155760.0, 20));
     world.insert(GravitationalConstant(BIG_G));
     world.insert(PositionScaleFactor(4_000_000_000.0));
@@ -111,22 +122,23 @@ pub async fn setup<'a, 'b>(
 
     // Register the systems
     let simulation_dispatcher = DispatcherBuilder::new()
-        .with(
-            UpdateCameraDisplacement {},
-            "sys_update_camera_displacement",
-            &[],
-        )
+        // .with(
+        //     UpdateCameraDisplacement {},
+        //     "sys_update_camera_displacement",
+        //     &[],
+        // )
         .with(
             Simulator::new(),
             "sys_simulator",
-            &["sys_update_camera_displacement"],
+            // &["sys_update_camera_displacement"],
+            &[],
         )
         .with(
             InstanceUpdater::new(),
             "sys_instance_updater",
             &["sys_simulator"],
         )
-        .with(UpdateCameraPosition {}, "sys_update_camera_position", &[])
+        // .with(UpdateCameraPosition {}, "sys_update_camera_position", &[])
         .build();
 
     Ok((

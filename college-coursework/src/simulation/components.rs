@@ -86,6 +86,15 @@ impl TimeScale {
             iterations,
         }
     }
+
+    pub fn from_max_time_per_iteration(
+        total_time_elapsed: f64,
+        max_time_per_iteration: f64,
+    ) -> Self {
+        let ierations = (total_time_elapsed / max_time_per_iteration).ceil() as usize;
+
+        Self::new(total_time_elapsed, ierations)
+    }
 }
 
 #[derive(Default, Copy, Clone)]
