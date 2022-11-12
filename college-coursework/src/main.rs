@@ -26,7 +26,7 @@ use specs::{Join, ReadStorage};
 use thiserror::Error;
 use tokio::io;
 
-use crate::{args::Args, simulation::Identifier};
+use crate::{args::Args, simulation::Identifier, simulation::load_planets_toml};
 use clap::Parser;
 
 const APPLICATION_NAME: &'static str = crate_name!();
@@ -57,7 +57,9 @@ fn main() -> Result<(), ApplicationError> {
     // Declare if running in debug mode
     #[cfg(debug_assertions)]
     info!("Running in debug mode");
-
+    
+    load_planets_toml();
+    
     // Setup a new async runtime throwing an error if it did not
     let runtime = tokio::runtime::Builder::new_current_thread()
         .enable_all()

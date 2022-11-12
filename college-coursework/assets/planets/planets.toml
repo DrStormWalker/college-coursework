@@ -1,0 +1,203 @@
+[[bodies]]
+identifier = "136199_eris"
+name = "136199 Eris"
+semimajor_axis = 10180122852
+aphelion = 14594512904
+eccentricity = 0.44068
+inclination = 44.0445
+mass = 1.66e+22
+density = 2.52
+gravity = 0.82
+mean_radius = 1163.0
+body_type = "dwarf_planet"
+parent = "sun"
+volume = 6590000000.0
+
+[[bodies]]
+identifier = "uranus"
+name = "Uranus"
+semimajor_axis = 2870658186
+aphelion = 3006318143
+eccentricity = 0.0457
+inclination = 0.772
+mass = 8.68127e+25
+density = 1.27
+gravity = 8.87
+mean_radius = 25362.0
+body_type = "planet"
+parent = "sun"
+volume = 68330000000000.0
+colour = [ 0.0, 0.5, 1.0, 1.0,]
+
+[[bodies]]
+identifier = "pluto"
+name = "Pluto"
+semimajor_axis = 5906440628
+aphelion = 7376124302
+eccentricity = 0.2488
+inclination = 17.16
+mass = 1.3029999999999998e+22
+density = 1.89
+gravity = 0.62
+mean_radius = 1188.3
+body_type = "dwarf_planet"
+parent = "sun"
+volume = 7150000000.0
+
+[[bodies]]
+identifier = "neptune"
+name = "Neptune"
+semimajor_axis = 4498396441
+aphelion = 4537039826
+eccentricity = 0.0113
+inclination = 1.769
+mass = 1.02413e+26
+density = 1.638
+gravity = 11.15
+mean_radius = 24622.0
+body_type = "planet"
+parent = "sun"
+volume = 62539999999999.99
+colour = [ 0.0, 0.0, 1.0, 1.0,]
+
+[[bodies]]
+identifier = "136108_haumea"
+name = "136108 Haumea"
+semimajor_axis = 6432011461
+aphelion = 7706399149
+eccentricity = 0.19126
+inclination = 28.19
+mass = 4.006e+21
+density = 2.6
+gravity = 0.401
+mean_radius = 0.0
+body_type = "dwarf_planet"
+parent = "sun"
+volume = 2400000000.0
+
+[[bodies]]
+identifier = "136472_makemake"
+name = "136472 Makemake"
+semimajor_axis = 6783345606
+aphelion = 7894762625
+eccentricity = 0.15586
+inclination = 29.00685
+mass = 4.4000000000000005e+21
+density = 1.4
+gravity = 0.5
+mean_radius = 725.0
+body_type = "dwarf_planet"
+parent = "sun"
+volume = 1700000000.0
+
+[[bodies]]
+identifier = "jupiter"
+name = "Jupiter"
+semimajor_axis = 778340821
+aphelion = 816620000
+eccentricity = 0.0489
+inclination = 1.304
+mass = 1.89819e+27
+density = 1.3262
+gravity = 24.79
+mean_radius = 69911.0
+body_type = "planet"
+parent = "sun"
+volume = 1431280000000000.0
+colour = [ 0.605, 0.428, 0.299, 1.0,]
+
+[[bodies]]
+identifier = "mars"
+name = "Mars"
+semimajor_axis = 227939200
+aphelion = 249200000
+eccentricity = 0.0935
+inclination = 1.85
+mass = 6.417119999999999e+23
+density = 3.9341
+gravity = 3.71
+mean_radius = 3389.5
+body_type = "planet"
+parent = "sun"
+volume = 163180000000.0
+colour = [ 1.0, 0.0, 0.0, 1.0,]
+
+[[bodies]]
+identifier = "mercury"
+name = "Mercury"
+semimajor_axis = 57909050
+aphelion = 69816900
+eccentricity = 0.2056
+inclination = 7.0
+mass = 3.30114e+23
+density = 5.4291
+gravity = 3.7
+mean_radius = 2439.4
+body_type = "planet"
+parent = "sun"
+volume = 60830000000.0
+colour = [ 0.7, 0.7, 0.7, 1.0,]
+
+[[bodies]]
+identifier = "saturn"
+name = "Saturn"
+semimajor_axis = 1426666422
+aphelion = 1503509229
+eccentricity = 0.0565
+inclination = 2.485
+mass = 5.6833600000000006e+26
+density = 0.6871
+gravity = 10.44
+mean_radius = 58232.0
+body_type = "planet"
+parent = "sun"
+volume = 827130000000000.0
+colour = [ 0.605, 0.428, 0.399, 1.0,]
+
+[[bodies]]
+identifier = "sun"
+name = "Sun"
+semimajor_axis = 0
+aphelion = 0
+eccentricity = 0.0
+inclination = 0.0
+mass = 1.9890000000000002e+30
+density = 1.0
+gravity = 0.0
+mean_radius = 695508.0
+body_type = "star"
+volume = 1.412e+18
+colour = [ 1.0, 0.898, 0.478, 1.0,]
+
+[[bodies]]
+identifier = "earth"
+name = "Earth"
+semimajor_axis = 149598023
+aphelion = 152100000
+eccentricity = 0.0167
+inclination = 0.0
+mass = 5.97237e+24
+density = 5.5136
+gravity = 9.8
+mean_radius = 6371.0084
+body_type = "planet"
+parent = "sun"
+volume = 1083210000000.0
+colour = [ 0.0, 1.0, 0.0, 1.0,]
+
+[[bodies]]
+identifier = "venus"
+name = "Venus"
+semimajor_axis = 108208475
+aphelion = 108939000
+eccentricity = 0.0067
+inclination = 3.39
+mass = 4.86747e+24
+density = 5.243
+gravity = 8.87
+mean_radius = 6051.8
+body_type = "planet"
+parent = "sun"
+volume = 928430000000.0
+colour = [ 0.9, 0.9, 0.9, 1.0,]
+

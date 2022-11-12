@@ -1,5 +1,7 @@
 use cgmath::Vector3;
 use specs::{Builder, Component, Entity, VecStorage, World, WorldExt};
+use serde::Deserialize;
+use std::collections::HashMap;
 
 use super::{Identifier, Mass, Position, Velocity};
 use crate::util::Vec3;
@@ -186,4 +188,45 @@ pub fn planets() -> Vec<OrbitalBody> {
         PLANET_URANUS,
         PLANET_NEPTUNE,
     ]
+}
+
+const PLANETS_TOML: &'static str = include_str!("../../assets/planets/planets.toml");
+
+pub struct RawOribitalBody {
+    identifier: &'static str,
+    name: &'static str,
+    position: [f64; 3],
+    velocity: [f64; 3],
+    colour: [f32; 4],
+    mass: f64,
+    parent: Option<[f32; 4]>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct LoadedBody {
+    identifier: &'static str,
+    name: &'static str,
+    semimajor_axis: f64,
+    aphelion: f64,
+    eccentricity: f64,
+    inclination: f64,
+    mass: f64,
+    density: f32,
+    gravity: f32,
+    mean_radius: f32,
+    body_type: &'static str,
+    volume: f32,
+    parent: Option<&'static str>,
+    colour: Option<[f32; 4]>,
+}
+
+pub fn load_planets_toml() {
+    let mut planets: HashMap<&'static str, Vec<LoadedBody>> = toml::from_str(PLANETS_TOML)
+        .expect("Invalid initial planet configuration");
+    
+
+    let planets = planets.remove("bodies")
+        .expect("Invalid initial planet configuration");
+    
+    println!("{:?}", planets);
 }
